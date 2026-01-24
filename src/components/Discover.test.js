@@ -43,8 +43,8 @@ describe('Discover Component', () => {
     expect(screen.getByText(/95% Match!/i)).toBeInTheDocument();
   });
 
-  test('shows Ripen button and handles success', () => {
-    const mockRipenMatch = jest.fn().mockReturnValue({ success: true });
+  test('shows Ripen button and handles success', async () => {
+    const mockRipenMatch = jest.fn().mockResolvedValue({ success: true });
     useUser.mockReturnValue({
       user: {
           membershipTier: 'free',
@@ -64,12 +64,12 @@ describe('Discover Component', () => {
     fireEvent.click(ripenButton);
     expect(mockRipenMatch).toHaveBeenCalled();
     // After clicking, should show "Connection Ripened"
-    expect(screen.getByText(/Connection Ripened!/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Connection Ripened!/i)).toBeInTheDocument();
   });
 
-  test('shows Limit Reached alert when daily quota exceeded', () => {
+  test('shows Limit Reached alert when daily quota exceeded', async () => {
     const mockNavigateTo = jest.fn();
-    const mockRipenMatch = jest.fn().mockReturnValue({ success: false, reason: 'limit_reached' });
+    const mockRipenMatch = jest.fn().mockResolvedValue({ success: false, reason: 'limit_reached' });
     const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     useUser.mockReturnValue({
@@ -89,7 +89,14 @@ describe('Discover Component', () => {
     expect(ripenButton).toBeInTheDocument();
 
     fireEvent.click(ripenButton);
+
+    // Wait for the async action
+    await screen.findByText(/Ripen Connection/i); // Just waiting for loop/promises
+
     expect(mockRipenMatch).toHaveBeenCalled();
+    // Since alert is synchronous after await, we might need a small delay or waitFor
+    await new Promise(r => setTimeout(r, 0));
+
     expect(alertMock).toHaveBeenCalledWith(expect.stringContaining("Daily limit reached"));
     expect(mockNavigateTo).toHaveBeenCalledWith('settings');
 

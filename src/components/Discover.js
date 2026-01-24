@@ -66,8 +66,8 @@ const Discover = () => {
      }
   }, [user.adPreferences.allowAds, ads]);
 
-  const handleRipen = () => {
-    const result = ripenMatch();
+  const handleRipen = async () => {
+    const result = await ripenMatch();
     if (result.success) {
       setIsRipened(true);
     } else if (result.reason === 'limit_reached') {
