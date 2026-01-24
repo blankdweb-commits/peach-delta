@@ -10,6 +10,16 @@ const nectarNotificationStyle = {
   boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
 };
 
+const adCardStyle = {
+  border: '2px solid #aaa',
+  backgroundColor: '#f0f0f0',
+  padding: '20px',
+  borderRadius: '15px',
+  textAlign: 'center',
+  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+  position: 'relative'
+};
+
 const buttonStyle = {
   backgroundColor: '#FF7F50',
   color: 'white',
@@ -22,9 +32,11 @@ const buttonStyle = {
 };
 
 const Discover = () => {
-  const { user, deductPits, navigateTo } = useUser();
+  const { user, ads, ripenMatch, navigateTo } = useUser();
   const [match, setMatch] = useState(null);
   const [isRipened, setIsRipened] = useState(false);
+  const [showingAd, setShowingAd] = useState(false);
+  const [currentAd, setCurrentAd] = useState(null);
 
   // Mock Match Data (Simulating a high compatibility match)
   useEffect(() => {
@@ -41,33 +53,64 @@ const Discover = () => {
     });
   }, []);
 
+  // Determine if we should show an ad
+  useEffect(() => {
+     if (user.adPreferences.allowAds && ads.length > 0) {
+        // Simple random chance for ad (e.g., 30% chance on load)
+        // In reality, this would be more sophisticated interspersing
+        if (Math.random() < 0.3) {
+            setShowingAd(true);
+            const randomAd = ads[Math.floor(Math.random() * ads.length)];
+            setCurrentAd(randomAd);
+        }
+     }
+  }, [user.adPreferences.allowAds, ads]);
+
   const handleRipen = () => {
-    const cost = 5;
-    if (user.pits >= cost) {
-      const success = deductPits(cost);
-      if (success) {
-        setIsRipened(true);
-        // Here we would also update the backend to record the "Ripen" action
-      }
-    } else {
-        // This case handles if the button was clicked but logic failed,
-        // though the UI should guide them to the store first.
-        alert("Not enough Pits!");
-        navigateTo('store');
+    const result = ripenMatch();
+    if (result.success) {
+      setIsRipened(true);
+    } else if (result.reason === 'limit_reached') {
+        alert("Daily limit reached! Upgrade to Premium for unlimited connections.");
+        navigateTo('settings');
     }
   };
 
-  if (!match) return <div>Loading potential matches in Delta...</div>;
+  const handleSkipAd = () => {
+      setShowingAd(false);
+  };
+
+  if (!match && !showingAd) return <div>Loading potential matches in Delta...</div>;
 
   return (
     <div>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
             <h2>Discover</h2>
-            <div>Balance: {user.pits} Pits</div>
+            <div>
+                <span style={{marginRight: '10px', fontWeight: 'bold'}}>
+                    {user.membershipTier.toUpperCase()}
+                </span>
+                {user.membershipTier === 'free' && (
+                    <span>({user.dailyRipenCount}/25 today)</span>
+                )}
+            </div>
         </div>
 
-      {/* Peach Nectar Notification */}
-      {match.compatibility >= 90 && !isRipened && (
+      {/* Ad Card */}
+      {showingAd && currentAd && (
+          <div style={adCardStyle}>
+              <div style={{position: 'absolute', top: 10, right: 10, background: '#ccc', padding: '2px 6px', fontSize: '10px', borderRadius: '4px'}}>Sponsored</div>
+              <h3>{currentAd.title}</h3>
+              <p>{currentAd.content}</p>
+              <div style={{marginTop: '20px'}}>
+                  <button style={{...buttonStyle, backgroundColor: '#888'}} onClick={handleSkipAd}>Skip Ad</button>
+                  <button style={{...buttonStyle, marginLeft: '10px', backgroundColor: '#444'}}>Learn More</button>
+              </div>
+          </div>
+      )}
+
+      {/* Peach Nectar Notification (Match Card) */}
+      {!showingAd && match && match.compatibility >= 90 && !isRipened && (
         <div style={nectarNotificationStyle}>
           <h2 style={{ color: '#FF4500' }}>Peach Nectar! 🍯</h2>
           <p style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{match.compatibility}% Match!</p>
@@ -82,20 +125,20 @@ const Discover = () => {
           <p><em>{match.distance} away</em></p>
 
           {/* Logic for Action Button */}
-          {user.pits >= 5 ? (
-             <button style={buttonStyle} onClick={handleRipen}>
-                Ripen Connection (-5 Pits) 🍑
-             </button>
-          ) : (
-              <button style={{ ...buttonStyle, backgroundColor: '#20B2AA' }} onClick={() => navigateTo('store')}>
-                  Get More Pits to Ripen 🛒
-              </button>
-          )}
+           <button style={buttonStyle} onClick={handleRipen}>
+              Ripen Connection 🍑
+           </button>
+
+           {user.membershipTier === 'free' && (
+               <p style={{fontSize: '0.8em', color: '#666', marginTop: '10px'}}>
+                   {25 - user.dailyRipenCount} free reveals left today.
+               </p>
+           )}
         </div>
       )}
 
       {/* Ripened View */}
-      {isRipened && (
+      {!showingAd && isRipened && match && (
         <div style={nectarNotificationStyle}>
           <h2 style={{ color: '#32CD32' }}>Connection Ripened! 💚</h2>
           <div style={{ margin: '20px auto', width: '150px', height: '150px', overflow: 'hidden', borderRadius: '50%' }}>
