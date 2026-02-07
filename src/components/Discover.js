@@ -18,9 +18,14 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }
     // Matching Logic (same as before)
     if (!match.basics || !match.relationships || !match.life) return { score: 0, commonFun: [], commonValues: [] };
 
-    const commonFun = user.basics.fun.filter(f => match.basics.fun.includes(f));
-    const commonMedia = user.basics.media.filter(m => match.basics.media.includes(m));
-    const commonValues = user.relationships.values.filter(v => match.relationships.values.includes(v));
+    // Ensure user basics exist before filtering
+    const userFun = user.basics?.fun || [];
+    const userMedia = user.basics?.media || [];
+    const userValues = user.relationships?.values || [];
+
+    const commonFun = userFun.filter(f => match.basics.fun.includes(f));
+    const commonMedia = userMedia.filter(m => match.basics.media.includes(m));
+    const commonValues = userValues.filter(v => match.relationships.values.includes(v));
 
     let score = 0;
     score += Math.min(commonFun.length * 7, 20);

@@ -16,14 +16,16 @@ export const UserProvider = ({ children }) => {
   const [potentialMatches, setPotentialMatches] = useState(MOCK_USERS);
   const [adsSeen, setAdsSeen] = useState(0);
   const [business, setBusiness] = useState({ isBusiness: false, ads: [] });
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   // Chat State: { matchId: [{ id, text, sender: 'me'|'them', timestamp }] }
   const [chats, setChats] = useState({});
+  const [feedback, setFeedback] = useState([]); // Store user feedback
 
   // Current user's preferences (mocked for matching logic)
   // eslint-disable-next-line no-unused-vars
   const [userProfile, setUserProfile] = useState({
-    // Hardcoded read-only fields for now
+    // Hardcoded read-only fields for now (overwritten by onboarding later)
     name: "My Name",
     email: "myemail@peach.com",
     photoUrl: null, // Avatar
@@ -127,10 +129,6 @@ export const UserProvider = ({ children }) => {
     }, 2000);
   };
 
-  // Helper to add a wingman generated message directly to input or as a sent message?
-  // Usually the user reviews it first. So we just return the string in the UI.
-  // But if the user clicks "Send", we use sendMessage.
-
   // Admin Actions
   const deleteUser = (userId) => {
     setPotentialMatches(prev => prev.filter(user => user.id !== userId));
@@ -144,6 +142,8 @@ export const UserProvider = ({ children }) => {
 
   // Membership Actions
   const processUpgrade = async (paymentReference) => {
+    // Payment amount should be verified on backend (2500)
+    // We pass ref to mock backend
     const result = await mockBackend.verifyPayment(paymentReference);
     if (result.status) {
       setSubscription(prev => ({ ...prev, isPremium: true }));
@@ -182,11 +182,24 @@ export const UserProvider = ({ children }) => {
     return false;
   };
 
-  const postAd = (adData) => {
-    setBusiness(prev => ({
-      ...prev,
-      ads: [...prev.ads, { id: Date.now(), ...adData }]
-    }));
+  const postAd = async (adData, paymentRef) => {
+    // Verify payment for ad (1200)
+    const result = await mockBackend.verifyPayment(paymentRef);
+    if (result.status) {
+        setBusiness(prev => ({
+          ...prev,
+          ads: [...prev.ads, { id: Date.now(), ...adData }]
+        }));
+        return true;
+    }
+    return false;
+  };
+
+  // Feedback Submission
+  const submitFeedback = (data) => {
+    setFeedback(prev => [...prev, data]);
+    // Could send to backend here
+    console.log("Feedback received:", data);
   };
 
   return (
@@ -208,7 +221,11 @@ export const UserProvider = ({ children }) => {
       createBusinessAccount,
       postAd,
       chats,
-      sendMessage
+      sendMessage,
+      onboardingComplete,
+      setOnboardingComplete,
+      submitFeedback,
+      feedback
     }}>
       {children}
     </UserContext.Provider>

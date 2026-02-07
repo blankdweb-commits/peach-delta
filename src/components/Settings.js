@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
+import { mockBackend } from '../services/mockBackend';
+import FeedbackHandler from './FeedbackHandler';
 
 const Settings = ({ onNavigateToMembership }) => {
-  const { userProfile, updateUserProfile, subscription, business, createBusinessAccount, postAd } = useUser();
+  const { userProfile, updateUserProfile, subscription, business, createBusinessAccount, postAd, setOnboardingComplete, submitFeedback } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
   const [adForm, setAdForm] = useState({ title: '', content: '' });
+  const [processingAd, setProcessingAd] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // Handle Profile Inputs
   const handleProfileChange = (field, value) => {
@@ -45,11 +49,29 @@ const Settings = ({ onNavigateToMembership }) => {
     }
   };
 
-  const handlePostAd = (e) => {
+  const handlePostAd = async (e) => {
     e.preventDefault();
-    postAd(adForm);
-    setAdForm({ title: '', content: '' });
-    alert("Ad Posted Successfully!");
+    setProcessingAd(true);
+
+    // Simulate Payment for Ad (1200 Naira)
+    setTimeout(async () => {
+      const fakeRef = "ad_ref_" + Date.now();
+      const success = await postAd(adForm, fakeRef);
+
+      setProcessingAd(false);
+      if (success) {
+        setAdForm({ title: '', content: '' });
+        alert("Ad Posted Successfully! (₦1,200 deducted)");
+      } else {
+        alert("Payment Failed.");
+      }
+    }, 2000);
+  };
+
+  const handleRestartTutorial = () => {
+    if (window.confirm("Restart the tutorial? This will take you back to onboarding.")) {
+      setOnboardingComplete(false);
+    }
   };
 
   // Styles
@@ -138,7 +160,7 @@ const Settings = ({ onNavigateToMembership }) => {
         <div style={{ padding: '0 5px' }}>
           <h3>App Preferences</h3>
 
-          <div style={{ padding: '15px', border: '1px solid #eee', borderRadius: '10px' }}>
+          <div style={{ padding: '15px', border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong style={{ fontSize: '1rem', display: 'block' }}>Show Targeted Ads</strong>
@@ -171,6 +193,24 @@ const Settings = ({ onNavigateToMembership }) => {
               </label>
             </div>
           </div>
+
+          <div style={{ marginTop: '30px' }}>
+            <h4>Help & Support</h4>
+            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                <button
+                  onClick={handleRestartTutorial}
+                  style={{ padding: '10px', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  📚 Restart Tutorial
+                </button>
+                <button
+                  onClick={() => setShowFeedback(true)}
+                  style={{ padding: '10px', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  💬 Send Feedback / Report Bug
+                </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -194,7 +234,7 @@ const Settings = ({ onNavigateToMembership }) => {
               ) : (
                 <div>
                   <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid #eee', borderRadius: '10px' }}>
-                    <h4>Post a New Ad</h4>
+                    <h4>Post a New Ad (₦1,200)</h4>
                     <form onSubmit={handlePostAd}>
                       <input
                         placeholder="Ad Title"
@@ -210,7 +250,13 @@ const Settings = ({ onNavigateToMembership }) => {
                         onChange={(e) => setAdForm({ ...adForm, content: e.target.value })}
                         required
                       />
-                      <button type="submit" style={buttonStyle}>Post Ad</button>
+                      <button
+                        type="submit"
+                        style={{ ...buttonStyle, opacity: processingAd ? 0.7 : 1 }}
+                        disabled={processingAd}
+                      >
+                        {processingAd ? 'Processing...' : 'Pay & Post Ad'}
+                      </button>
                     </form>
                   </div>
 
@@ -233,6 +279,8 @@ const Settings = ({ onNavigateToMembership }) => {
           )}
         </div>
       )}
+
+      {showFeedback && <FeedbackHandler onClose={() => setShowFeedback(false)} onSubmit={submitFeedback} />}
     </div>
   );
 };

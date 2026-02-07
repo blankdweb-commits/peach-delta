@@ -9,21 +9,10 @@ def verify_final():
         print("Navigating...")
         page.goto("http://localhost:3000")
 
-        # Verify Discover
-        page.wait_for_selector('text=Discover Peaches 🍑')
-        page.screenshot(path="discover_page.png")
-        print("Discover page verified.")
-
-        # Go to Chats
-        page.click('button:has-text("💬")')
-        try:
-             page.wait_for_selector('text=Your Peaches 🍑', timeout=5000)
-        except:
-             # Or "No Chats Yet"
-             page.wait_for_selector('text=No Chats Yet', timeout=5000)
-
-        page.screenshot(path="chat_list_page.png")
-        print("Chat list page verified.")
+        # Verify Onboarding
+        page.wait_for_selector('text=Step 1: Verification')
+        page.screenshot(path="onboarding_step1.png")
+        print("Onboarding step 1 visible.")
 
         browser.close()
 
