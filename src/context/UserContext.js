@@ -13,9 +13,25 @@ export const UserProvider = ({ children }) => {
   // Current user's preferences (mocked for matching logic)
   const [userProfile, setUserProfile] = useState({
     alias: "My_Alias",
-    likes: ["Night shifts", "Suya after rounds", "Skincare"],
-    dislikes: ["8 AM lectures", "Rude preceptors", "PHCN blackouts"],
-    location: "Sapele"
+    level: "Year 2",
+    basics: {
+        fun: ["Eating Boli", "Watching Nollywood", "Swimming"],
+        media: ["Afrobeats", "Davido", "K-Dramas"]
+    },
+    life: {
+        based: "Sapele",
+        upbringing: "Strict but loving, raised by grandma."
+    },
+    work: {
+        job: "Student Nurse",
+        reason: "Always wanted to help people heal."
+    },
+    relationships: {
+        values: ["Honesty", "God-fearing", "Family"],
+        lookingFor: "Long-term"
+    },
+    vision: "A simple life with a small clinic of my own someday.",
+    special: "Communication is key to everything."
   });
 
   const addPits = (amount) => {
