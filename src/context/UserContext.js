@@ -7,6 +7,7 @@ export const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null); // null = not logged in
   const [subscription, setSubscription] = useState({
     isPremium: false,
     dailyUnripes: 0,
@@ -18,43 +19,59 @@ export const UserProvider = ({ children }) => {
   const [business, setBusiness] = useState({ isBusiness: false, ads: [] });
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
-  // Chat State: { matchId: [{ id, text, sender: 'me'|'them', timestamp }] }
+  // Chat State
   const [chats, setChats] = useState({});
-  const [feedback, setFeedback] = useState([]); // Store user feedback
+  const [feedback, setFeedback] = useState([]);
 
-  // Current user's preferences (mocked for matching logic)
-  // eslint-disable-next-line no-unused-vars
+  // User Profile State
   const [userProfile, setUserProfile] = useState({
-    // Hardcoded read-only fields for now (overwritten by onboarding later)
     name: "My Name",
     email: "myemail@peach.com",
-    photoUrl: null, // Avatar
-
-    preferences: {
-      allowAds: false // Premium user opt-in
-    },
-
+    photoUrl: null,
+    preferences: { allowAds: false },
     alias: "My_Alias",
     level: "Year 2",
-    basics: {
-        fun: ["Eating Boli", "Watching Nollywood", "Swimming"],
-        media: ["Afrobeats", "Davido", "K-Dramas"]
-    },
-    life: {
-        based: "Sapele",
-        upbringing: "Strict but loving, raised by grandma."
-    },
-    work: {
-        job: "Student Nurse",
-        reason: "Always wanted to help people heal."
-    },
-    relationships: {
-        values: ["Honesty", "God-fearing", "Family"],
-        lookingFor: "Long-term"
-    },
-    vision: "A simple life with a small clinic of my own someday.",
-    special: "Communication is key to everything."
+    basics: { fun: [], media: [] },
+    life: { based: "Sapele", upbringing: "" },
+    work: { job: "Student Nurse", reason: "" },
+    relationships: { values: [], lookingFor: "Long-term" },
+    vision: "",
+    special: ""
   });
+
+  // Auth Functions
+  const loginUser = (email, password) => {
+    // Mock Logic
+    if (email.includes('@') && password.length > 3) {
+        setCurrentUser({ email, id: 'current_user' });
+        // Restore profile if saved in mock backend?
+        // For now, reset onboarding if new user simulation
+        if (email === 'test@peach.com') {
+            setOnboardingComplete(true);
+            setSubscription(prev => ({ ...prev, isPremium: false }));
+        }
+        return true;
+    }
+    return false;
+  };
+
+  const signupUser = (email, password) => {
+      // Mock Logic
+      if (email.includes('@')) {
+          setCurrentUser({ email, id: 'current_user' });
+          setOnboardingComplete(false); // New user needs onboarding
+          setSubscription(prev => ({ ...prev, isPremium: false }));
+          // Reset Profile
+          setUserProfile(prev => ({ ...prev, email }));
+          return true;
+      }
+      return false;
+  };
+
+  const logoutUser = () => {
+      setCurrentUser(null);
+      setOnboardingComplete(false);
+  };
 
   // Daily Reset Logic
   useEffect(() => {
@@ -77,55 +94,31 @@ export const UserProvider = ({ children }) => {
     if (rippedMatches.includes(matchId)) return true;
 
     if (canRipen()) {
-      // If free user, increment count
       if (!subscription.isPremium) {
          setSubscription(prev => ({
            ...prev,
            dailyUnripes: prev.dailyUnripes + 1
          }));
       }
-
       setRippedMatches(prev => [...prev, matchId]);
-
-      // Initialize chat for new match
-      setChats(prev => ({
-        ...prev,
-        [matchId]: []
-      }));
-
+      setChats(prev => ({ ...prev, [matchId]: [] }));
       return true;
     }
-    return false; // Limit reached, redirect handled in Discover
+    return false;
   };
 
   const isRipped = (matchId) => rippedMatches.includes(matchId);
 
   // Chat Actions
   const sendMessage = (matchId, text) => {
-    const newMessage = {
-      id: Date.now(),
-      text,
-      sender: 'me',
-      timestamp: new Date().toISOString()
-    };
-
+    const newMessage = { id: Date.now(), text, sender: 'me', timestamp: new Date().toISOString() };
     setChats(prev => ({
       ...prev,
       [matchId]: [...(prev[matchId] || []), newMessage]
     }));
-
-    // Simulate a reply after 2 seconds
     setTimeout(() => {
-        const reply = {
-            id: Date.now() + 1,
-            text: "That's interesting! Tell me more about your shifts at the hospital.",
-            sender: 'them',
-            timestamp: new Date().toISOString()
-        };
-        setChats(prev => ({
-          ...prev,
-          [matchId]: [...(prev[matchId] || []), reply]
-        }));
+        const reply = { id: Date.now() + 1, text: "That's interesting! Tell me more.", sender: 'them', timestamp: new Date().toISOString() };
+        setChats(prev => ({ ...prev, [matchId]: [...(prev[matchId] || []), reply] }));
     }, 2000);
   };
 
@@ -140,10 +133,31 @@ export const UserProvider = ({ children }) => {
     ));
   };
 
-  // Membership Actions
+  const grantPremium = (userId) => {
+      // In a real app, we'd update the specific user in DB.
+      // Here, if userId is 'current_user' (us), update subscription.
+      // If it's a match, we just update their mock object (maybe to show badge).
+      if (userId === 'current_user' || !userId) {
+          setSubscription(prev => ({ ...prev, isPremium: true }));
+      } else {
+          // Update mock user list to reflect status if we track it there
+          setPotentialMatches(prev => prev.map(user =>
+            user.id === userId ? { ...user, isPremium: true } : user
+          ));
+      }
+  };
+
+  const revokePremium = (userId) => {
+      if (userId === 'current_user' || !userId) {
+          setSubscription(prev => ({ ...prev, isPremium: false }));
+      } else {
+          setPotentialMatches(prev => prev.map(user =>
+            user.id === userId ? { ...user, isPremium: false } : user
+          ));
+      }
+  };
+
   const processUpgrade = async (paymentReference) => {
-    // Payment amount should be verified on backend (2500)
-    // We pass ref to mock backend
     const result = await mockBackend.verifyPayment(paymentReference);
     if (result.status) {
       setSubscription(prev => ({ ...prev, isPremium: true }));
@@ -152,28 +166,17 @@ export const UserProvider = ({ children }) => {
     return false;
   };
 
-  // Ad Tracking
-  const incrementAdsSeen = () => {
-    setAdsSeen(prev => prev + 1);
-  };
+  const incrementAdsSeen = () => setAdsSeen(prev => prev + 1);
 
-  // Profile Updates
   const updateUserProfile = (updates) => {
     setUserProfile(prev => {
-      // Handle deep merge for nested objects if necessary, or simple merge
-      // For preferences, we might want specific handling if passed partially
       if (updates.preferences) {
-        return {
-          ...prev,
-          ...updates,
-          preferences: { ...prev.preferences, ...updates.preferences }
-        };
+        return { ...prev, ...updates, preferences: { ...prev.preferences, ...updates.preferences } };
       }
       return { ...prev, ...updates };
     });
   };
 
-  // Business Account
   const createBusinessAccount = () => {
     if (subscription.isPremium) {
       setBusiness(prev => ({ ...prev, isBusiness: true }));
@@ -183,49 +186,27 @@ export const UserProvider = ({ children }) => {
   };
 
   const postAd = async (adData, paymentRef) => {
-    // Verify payment for ad (1200)
     const result = await mockBackend.verifyPayment(paymentRef);
     if (result.status) {
-        setBusiness(prev => ({
-          ...prev,
-          ads: [...prev.ads, { id: Date.now(), ...adData }]
-        }));
+        setBusiness(prev => ({ ...prev, ads: [...prev.ads, { id: Date.now(), ...adData }] }));
         return true;
     }
     return false;
   };
 
-  // Feedback Submission
   const submitFeedback = (data) => {
     setFeedback(prev => [...prev, data]);
-    // Could send to backend here
     console.log("Feedback received:", data);
   };
 
   return (
     <UserContext.Provider value={{
-      subscription,
-      ripenMatch,
-      isRipped,
-      rippedMatches,
-      userProfile,
-      potentialMatches,
-      deleteUser,
-      banUser,
-      adsSeen,
-      incrementAdsSeen,
-      processUpgrade,
-      canRipen,
-      updateUserProfile,
-      business,
-      createBusinessAccount,
-      postAd,
-      chats,
-      sendMessage,
-      onboardingComplete,
-      setOnboardingComplete,
-      submitFeedback,
-      feedback
+      currentUser, loginUser, signupUser, logoutUser,
+      subscription, ripenMatch, isRipped, rippedMatches, userProfile, potentialMatches,
+      deleteUser, banUser, grantPremium, revokePremium,
+      adsSeen, incrementAdsSeen, processUpgrade, canRipen, updateUserProfile,
+      business, createBusinessAccount, postAd, chats, sendMessage,
+      onboardingComplete, setOnboardingComplete, submitFeedback, feedback
     }}>
       {children}
     </UserContext.Provider>

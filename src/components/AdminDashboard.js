@@ -4,7 +4,7 @@ import { useUser } from '../context/UserContext';
 
 const AdminDashboard = ({ onBack }) => {
   const { isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser } = useAdmin();
-  const { potentialMatches, subscription } = useUser();
+  const { potentialMatches, subscription, grantPremium, revokePremium } = useUser();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -38,8 +38,12 @@ const AdminDashboard = ({ onBack }) => {
     );
   }
 
-  // Count premium users (just our single user for now in this context model)
-  const premiumCount = subscription.isPremium ? 1 : 0;
+  // Count premium users (mock logic: check potentialMatches flags or subscription)
+  // For 'Me' user:
+  const myPremium = subscription.isPremium;
+  // For others (mocked in potentialMatches):
+  const otherPremiums = potentialMatches.filter(u => u.isPremium).length;
+  const premiumCount = (myPremium ? 1 : 0) + otherPremiums;
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif', width: '100%', boxSizing: 'border-box' }}>
@@ -51,7 +55,7 @@ const AdminDashboard = ({ onBack }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginBottom: '40px' }}>
         <div style={{ padding: '20px', background: '#f9f9f9', borderRadius: '10px' }}>
           <h3>Total Users</h3>
-          <p style={{ fontSize: '2rem', margin: 0 }}>{potentialMatches.length}</p>
+          <p style={{ fontSize: '2rem', margin: 0 }}>{potentialMatches.length + 1}</p>
         </div>
         <div style={{ padding: '20px', background: '#f9f9f9', borderRadius: '10px' }}>
           <h3>Premium Members</h3>
@@ -64,16 +68,30 @@ const AdminDashboard = ({ onBack }) => {
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', minWidth: '600px' }}>
           <thead>
             <tr style={{ textAlign: 'left', background: '#eee' }}>
-              <th style={{ padding: '10px' }}>ID</th>
-              <th style={{ padding: '10px' }}>Alias / Real Name</th>
+              <th style={{ padding: '10px' }}>User</th>
               <th style={{ padding: '10px' }}>Status</th>
+              <th style={{ padding: '10px' }}>Premium</th>
               <th style={{ padding: '10px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
+            {/* Current User Row */}
+            <tr style={{ borderBottom: '1px solid #ddd', background: '#eef' }}>
+              <td style={{ padding: '10px' }}><strong>You (Current User)</strong></td>
+              <td style={{ padding: '10px' }}><span style={{ color: 'green' }}>Active</span></td>
+              <td style={{ padding: '10px' }}>{subscription.isPremium ? '👑 YES' : 'NO'}</td>
+              <td style={{ padding: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                {subscription.isPremium ? (
+                    <button onClick={() => revokePremium('current_user')} style={{ padding: '5px 10px', background: '#ccc', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Revoke Premium</button>
+                ) : (
+                    <button onClick={() => grantPremium('current_user')} style={{ padding: '5px 10px', background: '#FFD700', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Grant Premium</button>
+                )}
+              </td>
+            </tr>
+
+            {/* Other Users */}
             {potentialMatches.map(user => (
               <tr key={user.id} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={{ padding: '10px' }}>{user.id}</td>
                 <td style={{ padding: '10px' }}>
                   <div><strong>{user.alias}</strong></div>
                   <div style={{ fontSize: '0.8rem', color: '#666' }}>{user.realName}</div>
@@ -81,7 +99,10 @@ const AdminDashboard = ({ onBack }) => {
                 <td style={{ padding: '10px' }}>
                   {user.banned ? <span style={{ color: 'red', fontWeight: 'bold' }}>BANNED</span> : <span style={{ color: 'green' }}>Active</span>}
                 </td>
-                <td style={{ padding: '10px', display: 'flex', gap: '10px' }}>
+                <td style={{ padding: '10px' }}>
+                   {user.isPremium ? '👑 YES' : 'NO'}
+                </td>
+                <td style={{ padding: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => banUser(user.id)}
                     style={{ padding: '5px 10px', background: user.banned ? '#ccc' : '#ffa500', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
@@ -95,6 +116,11 @@ const AdminDashboard = ({ onBack }) => {
                   >
                     Delete
                   </button>
+                  {user.isPremium ? (
+                      <button onClick={() => revokePremium(user.id)} style={{ padding: '5px 10px', background: '#ccc', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Revoke</button>
+                  ) : (
+                      <button onClick={() => grantPremium(user.id)} style={{ padding: '5px 10px', background: '#FFD700', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Grant</button>
+                  )}
                 </td>
               </tr>
             ))}

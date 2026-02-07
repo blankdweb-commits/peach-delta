@@ -11,7 +11,8 @@ export const AdminProvider = ({ children }) => {
 
   const loginAdmin = (password) => {
     // Simple password check for prototype
-    if (password === 'admin123') {
+    const adminPass = process.env.REACT_APP_ADMIN_PASSWORD || 'admin123';
+    if (password === adminPass) {
       setIsAdmin(true);
       return true;
     }

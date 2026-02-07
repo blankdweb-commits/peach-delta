@@ -8,13 +8,24 @@ import Settings from './components/Settings';
 import ChatList from './components/ChatList';
 import Chat from './components/Chat';
 import Onboarding from './components/Onboarding';
+import { Login, Signup } from './components/Auth';
 
 function AppContent() {
-  const { onboardingComplete } = useUser();
+  const { currentUser, onboardingComplete } = useUser();
   const [currentView, setCurrentView] = useState('discover');
+  const [authView, setAuthView] = useState('login'); // login or signup
   const [selectedChatId, setSelectedChatId] = useState(null);
 
-  // If onboarding is not complete, show Onboarding
+  // Auth Flow
+  if (!currentUser) {
+      if (authView === 'login') {
+          return <Login onLoginSuccess={() => setCurrentView('discover')} onSwitchToSignup={() => setAuthView('signup')} />;
+      } else {
+          return <Signup onSignupSuccess={() => setCurrentView('discover')} onSwitchToLogin={() => setAuthView('login')} />;
+      }
+  }
+
+  // Onboarding Flow
   if (!onboardingComplete) {
     return <Onboarding onComplete={() => setCurrentView('discover')} />;
   }

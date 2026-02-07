@@ -1,24 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import TinderCard from 'react-tinder-card';
 import { useUser } from '../context/UserContext';
 import AdBanner from './AdBanner';
 import { wingmanService } from '../services/wingmanService';
+import './Discover.css';
 
 const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }) => {
   const { userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen, subscription } = useUser();
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [lastDirection, setLastDirection] = useState();
   const [notification, setNotification] = useState(null);
   const [actionsSinceAd, setActionsSinceAd] = useState(0);
   const [showAd, setShowAd] = useState(false);
   const [wingmanLine, setWingmanLine] = useState(null);
   const [showWingman, setShowWingman] = useState(false);
 
-  const currentMatch = potentialMatches[currentMatchIndex];
+  // Filter out banned users or already ripped?
+  // Ripped users might still appear if we want to "re-visit" them or just filter them out.
+  // Usually discovery hides matches.
+  const deck = useMemo(() => {
+    // Ensure potentialMatches is an array
+    const matches = Array.isArray(potentialMatches) ? potentialMatches : [];
+    return matches.filter(u => !u.banned && !isRipped(u.id));
+  }, [potentialMatches, isRipped]);
+
+  // We need to keep track of remaining cards to show empty state
+  const [currentIndex, setCurrentIndex] = useState(deck.length - 1);
+  const currentIndexRef = useRef(currentIndex);
+
+  const childRefs = useMemo(
+    () =>
+      Array(deck.length)
+        .fill(0)
+        .map((i) => React.createRef()),
+    [deck.length]
+  );
+
+  const updateCurrentIndex = (val) => {
+    setCurrentIndex(val);
+    currentIndexRef.current = val;
+  };
+
+  const canGoBack = currentIndex < deck.length - 1;
 
   const calculateCompatibility = (user, match) => {
-    // Matching Logic (same as before)
-    if (!match.basics || !match.relationships || !match.life) return { score: 0, commonFun: [], commonValues: [] };
-
-    // Ensure user basics exist before filtering
+    if (!match.basics || !match.relationships || !match.life) return 0;
+    // Simplified score for card view
     const userFun = user.basics?.fun || [];
     const userMedia = user.basics?.media || [];
     const userValues = user.relationships?.values || [];
@@ -35,92 +61,70 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }
     if (user.life.based === match.life.based) score += 20;
     if (user.relationships.lookingFor === match.relationships.lookingFor) score += 10;
 
-    if (score > 100) score = 100;
-
-    return { score: Math.round(score), commonFun, commonValues, commonMedia };
+    return Math.min(Math.round(score), 100);
   };
 
-  useEffect(() => {
-    // Reset Wingman state when match changes
-    setWingmanLine(null);
-    setShowWingman(false);
-
-    if (currentMatch) {
-      if (currentMatch.banned) {
-         handleNext(false);
-         return;
-      }
-
-      const { score, commonFun, commonValues, commonMedia } = calculateCompatibility(userProfile, currentMatch);
-
-      if (isRipped(currentMatch.id)) {
-        setNotification(null);
-        return;
-      }
-
+  // Helper to trigger Nectar Notification
+  const checkNectar = (match) => {
+      const score = calculateCompatibility(userProfile, match);
       if (score >= 80) {
-        const rand = Math.random();
-        let message = "";
-        const getRandom = (arr) => arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
-
-        if (rand < 0.33 && commonFun.length > 0) {
-           const funItem = getRandom(commonFun);
-           message = `Sweet like Nectar! 🍯 You and ${currentMatch.alias} match ${score}%. You both enjoy ${funItem}! Reveal your twin now!`;
-        } else if (rand < 0.66 && commonValues.length > 0) {
-           const valueItem = getRandom(commonValues);
-           message = `Deep Connection Alert! 💫 You and ${currentMatch.alias} match ${score}%. You both value ${valueItem}. Ripen the connection now! 🍑`;
-        } else {
-           message = `Is this your person? 😍 You and ${currentMatch.alias} have a ${score}% vibe match. Don't let this one stay unripened!`;
-        }
-
-        setNotification({
-          type: 'nectar',
-          message: message,
-          matchId: currentMatch.id
-        });
-      } else {
-        setNotification(null);
+          // Trigger Notification
+          // We can show a modal or overlay
+          const message = `Sweet like Nectar! 🍯 ${score}% Match with ${match.alias}!`;
+          setNotification({ match, message, score });
       }
-    }
-  }, [currentMatchIndex, userProfile, currentMatch, isRipped]);
+  };
 
-  const handleAction = () => {
-    // Increment action count
+  const swiped = async (direction, match, index) => {
+    setLastDirection(direction);
+    updateCurrentIndex(index - 1);
+
+    // Track Actions for Ads
     const newCount = actionsSinceAd + 1;
     setActionsSinceAd(newCount);
-
-    // Ad Logic:
-    // 1. If Free user (!isPremium) -> Show Ad
-    // 2. If Premium user (isPremium) AND opted in (preferences.allowAds) -> Show Ad
     const shouldShowAds = !subscription.isPremium || (subscription.isPremium && userProfile.preferences.allowAds);
+    if (shouldShowAds && newCount >= 5) { // Show ad every 5 swipes
+       setTimeout(() => setShowAd(true), 500); // Small delay
+       setActionsSinceAd(0);
+    }
 
-    if (shouldShowAds && newCount >= 3) {
-      setShowAd(true);
-      setActionsSinceAd(0);
+    if (direction === 'right') {
+        // Try to Ripen
+        // Logic: if canRipen, call ripenMatch.
+        // Wait, ripenMatch updates state which might re-render component.
+        // If successful, great. If not (limit reached), we need to handle it.
+        // However, swipe animation completes before async call finishes usually.
+
+        // Check capacity first
+        // We can use context canRipen() but it's sync.
+        // ripenMatch is async.
+
+        // If notification active, we might want to handle differently?
+        // Actually if they swipe right, it means "I want to match/ripen".
+
+        const success = await ripenMatch(match.id);
+        if (!success) {
+            // Limit Reached
+            // We should probably undo the swipe or show an alert?
+            // "Undo" is hard. Better to redirect to store or show modal.
+            alert("Daily Limit Reached! Upgrade to Premium to continue ripening.");
+            onNavigateToStore();
+        } else {
+             // Success
+             // Check for Nectar (high match)
+             checkNectar(match);
+        }
     }
   };
 
-  const handleNext = (countAction = true) => {
-    if (countAction) handleAction();
-    setCurrentMatchIndex((prev) => (prev + 1) % potentialMatches.length);
+  const outOfFrame = (name, idx) => {
+    // Console log or cleanup
   };
 
-  const handleRipenAction = async () => {
-    const success = await ripenMatch(currentMatch.id);
-    if (success) {
-      alert("Match Ripened! You can now see their details.");
-      setNotification(null);
-      handleAction();
-    } else {
-      // Failed (Limit Reached)
-      onNavigateToStore(); // Navigate to Membership
+  const swipe = async (dir) => {
+    if (currentIndex >= 0 && currentIndex < deck.length) {
+      await childRefs[currentIndex].current.swipe(dir); // Swipe the card!
     }
-  };
-
-  const handleWingmanClick = () => {
-    const line = wingmanService.generateLine(userProfile, currentMatch);
-    setWingmanLine(line);
-    setShowWingman(true);
   };
 
   const handleAdComplete = () => {
@@ -132,202 +136,99 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }
     return <AdBanner onAdComplete={handleAdComplete} />;
   }
 
-  if (!currentMatch) return <div>No more matches nearby!</div>;
-
-  const { score } = calculateCompatibility(userProfile, currentMatch);
-  const isMatchRipped = isRipped(currentMatch.id);
-
-  // Logic for Button Text
-  let buttonText = "";
-  if (subscription.isPremium) {
-    buttonText = "Ripen Now 👑";
-  } else {
-    if (subscription.dailyUnripes >= 25) {
-      buttonText = "Limit Reached - Upgrade";
-    } else {
-      buttonText = `Ripen (${25 - subscription.dailyUnripes} left today)`;
-    }
+  // If notification (Nectar) is present
+  if (notification) {
+      return (
+        <div className="nectar-overlay" style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            backgroundColor: 'rgba(255, 223, 186, 0.95)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: '20px', textAlign: 'center'
+        }}>
+            <h1 style={{ fontSize: '3rem', margin: '0 0 20px 0' }}>🍯</h1>
+            <h2>{notification.message}</h2>
+            <p>You ripened {notification.match.alias}! Start a chat?</p>
+            <div style={{ display: 'flex', gap: '20px', marginTop: '30px' }}>
+                <button onClick={() => setNotification(null)} style={{ padding: '15px 30px', border: '2px solid #333', background: 'transparent', borderRadius: '30px', cursor: 'pointer' }}>Keep Swiping</button>
+                <button onClick={onNavigateToChats} style={{ padding: '15px 30px', background: '#FF6347', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer' }}>Go to Chat</button>
+            </div>
+        </div>
+      );
   }
 
-  // Styles
-  const sectionStyle = { marginBottom: '25px' };
-  const labelStyle = { color: '#888', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '8px', display: 'block' };
-  const textStyle = { fontSize: '1.1rem', color: '#333', lineHeight: '1.5' };
-  const tagStyle = { display: 'inline-block', padding: '5px 12px', borderRadius: '20px', backgroundColor: '#f0f0f0', marginRight: '8px', marginBottom: '8px', fontSize: '0.9rem', color: '#555' };
+  // Handle empty state gracefully
+  if (deck.length === 0 || currentIndex < 0) {
+      return (
+        <div className="discover-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '3rem', margin: 0 }}>🍑</h1>
+            <h2>No more peaches nearby!</h2>
+            <p>Check back later or adjust your filters.</p>
+            <button onClick={() => window.location.reload()} style={{ marginTop: '20px', padding: '15px 30px', background: '#FF6347', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer' }}>Refresh</button>
+
+            <div style={{ marginTop: '40px' }}>
+                <button onClick={onNavigateToChats} style={{ marginRight: '20px', background: 'none', border: 'none', fontSize: '1rem', color: '#666', cursor: 'pointer' }}>💬 Chats</button>
+                <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1rem', color: '#666', cursor: 'pointer' }}>⚙️ Settings</button>
+            </div>
+        </div>
+      );
+  }
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', width: '100%', boxSizing: 'border-box' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Discover Peaches 🍑</h2>
+    <div className="discover-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      <header style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', zIndex: 100 }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0 }}>Discover 🍑</h2>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <button onClick={onNavigateToChats} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>💬</button>
-          <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>⚙️</button>
-          <div
-            onClick={onNavigateToStore}
-            style={{ fontWeight: 'bold', color: subscription.isPremium ? '#FFD700' : '#FF6347', cursor: 'pointer' }}
-          >
-            {subscription.isPremium ? "Premium 👑" : `${subscription.dailyUnripes}/25 Used`}
-          </div>
+          <button onClick={onNavigateToChats} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>💬</button>
+          <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>⚙️</button>
         </div>
       </header>
 
-      {notification && (
-        <div style={{
-          backgroundColor: '#FFF8DC',
-          padding: '20px',
-          borderRadius: '12px',
-          marginBottom: '30px',
-          border: '1px solid #FFD700',
-          boxShadow: '0 4px 12px rgba(255, 215, 0, 0.2)'
-        }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>{notification.message}</h3>
-          <button
-            onClick={handleRipenAction}
-            style={{
-              backgroundColor: subscription.dailyUnripes >= 25 && !subscription.isPremium ? '#333' : '#FF6347',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '25px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              fontWeight: '600',
-              marginTop: '10px'
-            }}
+      <div className="card-container" style={{ position: 'relative', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        {deck.map((match, index) => (
+          <TinderCard
+            ref={childRefs[index]}
+            className='swipe'
+            key={match.id}
+            onSwipe={(dir) => swiped(dir, match, index)}
+            onCardLeftScreen={() => outOfFrame(match.alias, index)}
+            preventSwipe={['up', 'down']}
           >
-            {buttonText}
-          </button>
-        </div>
-      )}
-
-      {/* Profile Card */}
-      <div style={{ border: '1px solid #eaeaea', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-        <div style={{ height: '250px', backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-           {isMatchRipped ? (
-             <img src={currentMatch.photoUrl} alt={currentMatch.realName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-           ) : (
-             <div style={{ fontSize: '80px', filter: 'blur(15px)', opacity: 0.6 }}>🍑</div>
-           )}
-           <div style={{ position: 'absolute', bottom: '20px', left: '20px', color: '#333', backgroundColor: 'rgba(255,255,255,0.8)', padding: '5px 15px', borderRadius: '15px', fontSize: '0.9rem' }}>
-             {currentMatch.distance}km away
-           </div>
-        </div>
-
-        <div style={{ padding: '30px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '30px' }}>
-            <h1 style={{ fontSize: '2rem', margin: 0 }}>
-              {isMatchRipped ? currentMatch.realName : currentMatch.alias}
-              <span style={{ fontSize: '1rem', color: '#888', marginLeft: '10px', fontWeight: 'normal' }}>{currentMatch.level}</span>
-            </h1>
-            <div style={{ fontSize: '1.2rem', color: '#FF6347', fontWeight: 'bold' }}>{score}% Match</div>
-          </div>
-
-          {/* Wingman Button (Only when ripped) */}
-          {isMatchRipped && (
-            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#E0F7FA', borderRadius: '10px', border: '1px solid #B2EBF2' }}>
-              {!showWingman ? (
-                <button
-                  onClick={handleWingmanClick}
-                  style={{
-                    background: 'none', border: 'none', color: '#006064', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', width: '100%'
-                  }}
-                >
-                  🦜 Need a Wingman? Click for an opener!
-                </button>
-              ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontStyle: 'italic', fontSize: '1.1rem', color: '#006064', marginBottom: '5px' }}>"{wingmanLine}"</p>
-                  <small style={{ color: '#00838F' }}>Copy this and slide into the DMs! 😉</small>
+            <div
+                style={{
+                    backgroundImage: `url(${match.photoUrl || 'https://via.placeholder.com/400x600?text=Peach'})`,
+                    width: '100%', height: '100%', borderRadius: '20px', backgroundSize: 'cover', backgroundPosition: 'center',
+                    position: 'relative', overflow: 'hidden'
+                }}
+            >
+                <div className="card-content">
+                    <h1>{match.alias}, {match.level}</h1>
+                    <p>📍 {match.distance}km away • {match.life.based}</p>
+                    <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                        {match.basics.fun.slice(0, 3).map(t => (
+                            <span key={t} style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.2)', padding: '5px 10px', borderRadius: '15px' }}>{t}</span>
+                        ))}
+                    </div>
                 </div>
-              )}
             </div>
-          )}
-
-          {/* Basics */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>Basics</span>
-            <div style={{ marginBottom: '10px' }}>
-              <div style={{fontSize: '0.9rem', marginBottom: '5px', color: '#666'}}>For Fun</div>
-              <div>{currentMatch.basics.fun.map(tag => <span key={tag} style={tagStyle}>{tag}</span>)}</div>
-            </div>
-            <div>
-              <div style={{fontSize: '0.9rem', marginBottom: '5px', color: '#666'}}>Music / Movies</div>
-              <div>{currentMatch.basics.media.map(tag => <span key={tag} style={tagStyle}>{tag}</span>)}</div>
-            </div>
-          </div>
-
-          {/* Life */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>Life</span>
-            <div style={{ marginBottom: '10px' }}><strong>Based in:</strong> {currentMatch.life.based}</div>
-            <div style={textStyle}>"{currentMatch.life.upbringing}"</div>
-          </div>
-
-          {/* Work */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>Work</span>
-            <div style={{ marginBottom: '5px' }}><strong>{currentMatch.work.job}</strong></div>
-            <div style={textStyle}>{currentMatch.work.reason}</div>
-          </div>
-
-          {/* Relationships */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>Relationships</span>
-            <div style={{ marginBottom: '10px' }}>
-                <div style={{fontSize: '0.9rem', marginBottom: '5px', color: '#666'}}>Values</div>
-                <div>{currentMatch.relationships.values.map(tag => <span key={tag} style={tagStyle}>{tag}</span>)}</div>
-            </div>
-            <div><strong>Looking for:</strong> {currentMatch.relationships.lookingFor}</div>
-          </div>
-
-          {/* Vision */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>Vision</span>
-            <div style={{ ...textStyle, fontStyle: 'italic' }}>"{currentMatch.vision}"</div>
-          </div>
-
-          {/* Special */}
-          <div style={sectionStyle}>
-            <span style={labelStyle}>One thing I learned from my parents</span>
-            <div style={textStyle}>{currentMatch.special}</div>
-          </div>
-
-        </div>
+          </TinderCard>
+        ))}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '40px' }}>
-        <button
-          onClick={() => handleNext(true)}
-          style={{
-            padding: '15px 30px',
-            fontSize: '1rem',
-            border: '2px solid #ddd',
-            backgroundColor: 'transparent',
-            borderRadius: '30px',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          Skip
-        </button>
-        {!isMatchRipped && !notification && (
-           <button
-             onClick={handleRipenAction}
-             style={{
-               padding: '15px 30px',
-               fontSize: '1rem',
-               background: subscription.dailyUnripes >= 25 && !subscription.isPremium ? '#333' : '#FF6347',
-               color: 'white',
-               border: 'none',
-               borderRadius: '30px',
-               cursor: 'pointer',
-               boxShadow: '0 4px 10px rgba(255, 99, 71, 0.3)'
-             }}
-           >
-             {buttonText}
-           </button>
-        )}
+      <div className="action-buttons" style={{ padding: '20px', paddingBottom: '40px', backgroundColor: 'white', display: 'flex', justifyContent: 'center', gap: '40px' }}>
+        <button className="swipe-btn swipe-left" onClick={() => swipe('left')}>✖</button>
+        <button className="swipe-btn swipe-right" onClick={() => swipe('right')}>🍑</button>
       </div>
+
+      {/* Compatibility Badge (if match is top card) */}
+      {currentIndex >= 0 && deck[currentIndex] && (
+           <div style={{
+               position: 'absolute', top: '80px', left: '50%', transform: 'translateX(-50%)',
+               background: 'rgba(255,255,255,0.9)', padding: '5px 15px', borderRadius: '20px',
+               boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 50, pointerEvents: 'none'
+           }}>
+               Match: {calculateCompatibility(userProfile, deck[currentIndex])}%
+           </div>
+      )}
     </div>
   );
 };
