@@ -17,6 +17,7 @@ export const UserProvider = ({ children }) => {
   const [adsSeen, setAdsSeen] = useState(0);
 
   // Current user's preferences (mocked for matching logic)
+  // eslint-disable-next-line no-unused-vars
   const [userProfile, setUserProfile] = useState({
     alias: "My_Alias",
     level: "Year 2",

@@ -131,4 +131,62 @@ describe('Discover Component', () => {
     expect(handleRipen).toHaveBeenCalled();
     expect(handleNavigate).toHaveBeenCalled();
   });
+
+  // Wingman Tests
+  test('does not show Wingman button when match is NOT ripened', () => {
+    renderWithContext(
+      <Discover onNavigateToStore={jest.fn()} />,
+      {
+        subscription: defaultSubscription,
+        userProfile: mockUserProfile,
+        potentialMatches: [highMatch],
+        ripenMatch: jest.fn(),
+        isRipped: () => false, // Not ripped
+        incrementAdsSeen: jest.fn()
+      }
+    );
+
+    expect(screen.queryByText(/Need a Wingman/i)).not.toBeInTheDocument();
+  });
+
+  test('shows Wingman button when match IS ripened', () => {
+    renderWithContext(
+      <Discover onNavigateToStore={jest.fn()} />,
+      {
+        subscription: defaultSubscription,
+        userProfile: mockUserProfile,
+        potentialMatches: [highMatch],
+        ripenMatch: jest.fn(),
+        isRipped: () => true, // Ripped
+        incrementAdsSeen: jest.fn()
+      }
+    );
+
+    expect(screen.getByText(/Need a Wingman/i)).toBeInTheDocument();
+  });
+
+  test('displays generated line when Wingman button clicked', () => {
+    Math.random = jest.fn(() => 0.1); // Control randomness for Wingman output
+
+    renderWithContext(
+      <Discover onNavigateToStore={jest.fn()} />,
+      {
+        subscription: defaultSubscription,
+        userProfile: mockUserProfile,
+        potentialMatches: [highMatch],
+        ripenMatch: jest.fn(),
+        isRipped: () => true, // Ripped
+        incrementAdsSeen: jest.fn()
+      }
+    );
+
+    const button = screen.getByText(/Need a Wingman/i);
+    fireEvent.click(button);
+
+    // Should show the line
+    expect(screen.getByText(/"So, be honest... who's better at A, you or me\? 😉"/i)).toBeInTheDocument();
+
+    // Should show helper text
+    expect(screen.getByText(/Copy this and slide into the DMs/i)).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import AdBanner from './AdBanner';
+import { wingmanService } from '../services/wingmanService';
 
 const Discover = ({ onNavigateToStore }) => {
   const { userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen, subscription } = useUser();
@@ -8,6 +9,8 @@ const Discover = ({ onNavigateToStore }) => {
   const [notification, setNotification] = useState(null);
   const [actionsSinceAd, setActionsSinceAd] = useState(0);
   const [showAd, setShowAd] = useState(false);
+  const [wingmanLine, setWingmanLine] = useState(null);
+  const [showWingman, setShowWingman] = useState(false);
 
   const currentMatch = potentialMatches[currentMatchIndex];
 
@@ -33,6 +36,10 @@ const Discover = ({ onNavigateToStore }) => {
   };
 
   useEffect(() => {
+    // Reset Wingman state when match changes
+    setWingmanLine(null);
+    setShowWingman(false);
+
     if (currentMatch) {
       if (currentMatch.banned) {
          handleNext(false);
@@ -99,6 +106,12 @@ const Discover = ({ onNavigateToStore }) => {
       // Failed (Limit Reached)
       onNavigateToStore(); // Navigate to Membership
     }
+  };
+
+  const handleWingmanClick = () => {
+    const line = wingmanService.generateLine(userProfile, currentMatch);
+    setWingmanLine(line);
+    setShowWingman(true);
   };
 
   const handleAdComplete = () => {
@@ -195,6 +208,27 @@ const Discover = ({ onNavigateToStore }) => {
             </h1>
             <div style={{ fontSize: '1.2rem', color: '#FF6347', fontWeight: 'bold' }}>{score}% Match</div>
           </div>
+
+          {/* Wingman Button (Only when ripped) */}
+          {isMatchRipped && (
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#E0F7FA', borderRadius: '10px', border: '1px solid #B2EBF2' }}>
+              {!showWingman ? (
+                <button
+                  onClick={handleWingmanClick}
+                  style={{
+                    background: 'none', border: 'none', color: '#006064', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', width: '100%'
+                  }}
+                >
+                  🦜 Need a Wingman? Click for an opener!
+                </button>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontStyle: 'italic', fontSize: '1.1rem', color: '#006064', marginBottom: '5px' }}>"{wingmanLine}"</p>
+                  <small style={{ color: '#00838F' }}>Copy this and slide into the DMs! 😉</small>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Basics */}
           <div style={sectionStyle}>
