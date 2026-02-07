@@ -28,6 +28,14 @@ const Settings = ({ onNavigateToMembership }) => {
     }
   };
 
+  const handlePreferenceChange = (key, value) => {
+    updateUserProfile({
+      preferences: {
+        [key]: value
+      }
+    });
+  };
+
   // Handle Business Logic
   const handleCreateBusiness = () => {
     if (createBusinessAccount()) {
@@ -45,16 +53,19 @@ const Settings = ({ onNavigateToMembership }) => {
   };
 
   // Styles
-  const containerStyle = { padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' };
-  const inputStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc' };
+  const containerStyle = { padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif', width: '100%', boxSizing: 'border-box' };
+  const inputStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '0.9rem' };
-  const buttonStyle = { padding: '10px 20px', background: '#FF6347', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
+  const buttonStyle = { padding: '12px 20px', background: '#FF6347', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', width: '100%', maxWidth: '200px' };
   const tabStyle = (isActive) => ({
-    padding: '10px 20px',
+    flex: 1,
+    textAlign: 'center',
+    padding: '15px 10px',
     cursor: 'pointer',
-    borderBottom: isActive ? '3px solid #FF6347' : 'none',
+    borderBottom: isActive ? '3px solid #FF6347' : '1px solid #eee',
     fontWeight: isActive ? 'bold' : 'normal',
-    color: isActive ? '#333' : '#888'
+    color: isActive ? '#333' : '#888',
+    backgroundColor: isActive ? '#fff' : '#f9f9f9'
   });
 
   return (
@@ -62,14 +73,15 @@ const Settings = ({ onNavigateToMembership }) => {
       <h2 style={{ marginBottom: '20px' }}>Settings ⚙️</h2>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', marginBottom: '20px' }}>
         <div style={tabStyle(activeTab === 'profile')} onClick={() => setActiveTab('profile')}>Profile</div>
+        <div style={tabStyle(activeTab === 'preferences')} onClick={() => setActiveTab('preferences')}>Preferences</div>
         <div style={tabStyle(activeTab === 'business')} onClick={() => setActiveTab('business')}>Business</div>
       </div>
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
-        <div>
+        <div style={{ padding: '0 5px' }}>
           <h3>Edit Profile</h3>
 
           {/* Avatar */}
@@ -81,7 +93,7 @@ const Settings = ({ onNavigateToMembership }) => {
                 <span style={{ fontSize: '30px' }}>👤</span>
               )}
             </div>
-            <input type="file" accept="image/*" onChange={handleAvatarUpload} />
+            <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ maxWidth: '100%' }} />
           </div>
 
           {/* Read-Only Fields */}
@@ -121,9 +133,50 @@ const Settings = ({ onNavigateToMembership }) => {
         </div>
       )}
 
+      {/* Preferences Tab */}
+      {activeTab === 'preferences' && (
+        <div style={{ padding: '0 5px' }}>
+          <h3>App Preferences</h3>
+
+          <div style={{ padding: '15px', border: '1px solid #eee', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ fontSize: '1rem', display: 'block' }}>Show Targeted Ads</strong>
+                <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                  {subscription.isPremium
+                    ? "Opt-in to support local businesses."
+                    : "Ads are required for Free plans."}
+                </span>
+              </div>
+
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '28px' }}>
+                <input
+                  type="checkbox"
+                  checked={!subscription.isPremium ? true : userProfile.preferences.allowAds}
+                  disabled={!subscription.isPremium}
+                  onChange={(e) => handlePreferenceChange('allowAds', e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', cursor: !subscription.isPremium ? 'not-allowed' : 'pointer',
+                  top: 0, left: 0, right: 0, bottom: 0, backgroundColor: (!subscription.isPremium || userProfile.preferences.allowAds) ? '#FF6347' : '#ccc',
+                  transition: '.4s', borderRadius: '34px',
+                  opacity: !subscription.isPremium ? 0.6 : 1
+                }}></span>
+                <span style={{
+                  position: 'absolute', content: '""', height: '20px', width: '20px',
+                  left: (!subscription.isPremium || userProfile.preferences.allowAds) ? '26px' : '4px', bottom: '4px',
+                  backgroundColor: 'white', transition: '.4s', borderRadius: '50%'
+                }}></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Business Tab */}
       {activeTab === 'business' && (
-        <div>
+        <div style={{ padding: '0 5px' }}>
           <h3>Business Account</h3>
 
           {!subscription.isPremium ? (

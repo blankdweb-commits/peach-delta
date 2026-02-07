@@ -3,7 +3,7 @@ import { useUser } from '../context/UserContext';
 import AdBanner from './AdBanner';
 import { wingmanService } from '../services/wingmanService';
 
-const Discover = ({ onNavigateToStore, onNavigateToSettings }) => {
+const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }) => {
   const { userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen, subscription } = useUser();
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [notification, setNotification] = useState(null);
@@ -84,8 +84,12 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings }) => {
     const newCount = actionsSinceAd + 1;
     setActionsSinceAd(newCount);
 
-    // Only show ads if NOT Premium
-    if (!subscription.isPremium && newCount >= 3) {
+    // Ad Logic:
+    // 1. If Free user (!isPremium) -> Show Ad
+    // 2. If Premium user (isPremium) AND opted in (preferences.allowAds) -> Show Ad
+    const shouldShowAds = !subscription.isPremium || (subscription.isPremium && userProfile.preferences.allowAds);
+
+    if (shouldShowAds && newCount >= 3) {
       setShowAd(true);
       setActionsSinceAd(0);
     }
@@ -147,10 +151,11 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings }) => {
   const tagStyle = { display: 'inline-block', padding: '5px 12px', borderRadius: '20px', backgroundColor: '#f0f0f0', marginRight: '8px', marginBottom: '8px', fontSize: '0.9rem', color: '#555' };
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+    <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', width: '100%', boxSizing: 'border-box' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Discover Peaches 🍑</h2>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <button onClick={onNavigateToChats} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>💬</button>
           <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>⚙️</button>
           <div
             onClick={onNavigateToStore}

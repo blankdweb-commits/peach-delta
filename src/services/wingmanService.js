@@ -1,13 +1,56 @@
-// Wingman Service - Generates contextual conversation starters
-// Designed for Delta State Nursing Community (Naija flavor)
-
 export const wingmanService = {
-  generateLine: (user, match) => {
+  // Now accepts an optional context object { lastMessage: string }
+  generateLine: (user, match, context = {}) => {
     const { basics: uBasics, life: uLife } = user;
     const { basics: mBasics, life: mLife, work: mWork, relationships: mRel, alias } = match;
 
     // Helper to get random item
     const getRandom = (arr) => arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
+
+    // --- CONVERSATION REPLY MODE ---
+    if (context.lastMessage) {
+        const lastMsg = context.lastMessage.toLowerCase();
+        const replies = [];
+
+        // Generic reply templates based on keywords
+        if (lastMsg.includes('shift') || lastMsg.includes('work') || lastMsg.includes('hospital')) {
+            replies.push(
+                `Tell me about it! I'm dragging myself through this week. 😩`,
+                `Omo, don't remind me. Is it at least quiet on your end?`,
+                `You're working hard! Remember to hydrate. 💧`
+            );
+        } else if (lastMsg.includes('lol') || lastMsg.includes('haha') || lastMsg.includes('funny')) {
+            replies.push(
+                `Glad I could make you laugh! 😉`,
+                `I try my best! So what else makes you smile?`,
+                `See? We're vibe-ing already.`
+            );
+        } else if (lastMsg.includes('hello') || lastMsg.includes('hi') || lastMsg.includes('hey')) {
+             replies.push(
+                `Hey! How's your day going?`,
+                `Hi there! Ready to trade war stories from the ward?`,
+                `Hey! I was just thinking about message you.`
+             );
+        } else if (lastMsg.includes('?')) {
+             // If they asked a question
+             replies.push(
+                `That's a good question! Honestly? I'd have to think about it. What about you?`,
+                `Hmm, let me get back to you on that one. 😉`,
+                `You're diving deep! I like it.`
+             );
+        } else {
+             // Default replies
+             replies.push(
+                `That's interesting! Tell me more.`,
+                `No way! Really?`,
+                `I feel that. So what are you up to now?`
+             );
+        }
+
+        return getRandom(replies);
+    }
+
+    // --- OPENER MODE (Original Logic) ---
 
     // 1. Shared Fun / Media (Strongest Openers - Return immediately if found)
     const commonFun = uBasics.fun.filter(f => mBasics.fun.includes(f));

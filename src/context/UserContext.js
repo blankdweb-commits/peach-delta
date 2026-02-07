@@ -17,12 +17,20 @@ export const UserProvider = ({ children }) => {
   const [adsSeen, setAdsSeen] = useState(0);
   const [business, setBusiness] = useState({ isBusiness: false, ads: [] });
 
+  // Chat State: { matchId: [{ id, text, sender: 'me'|'them', timestamp }] }
+  const [chats, setChats] = useState({});
+
   // Current user's preferences (mocked for matching logic)
+  // eslint-disable-next-line no-unused-vars
   const [userProfile, setUserProfile] = useState({
     // Hardcoded read-only fields for now
     name: "My Name",
     email: "myemail@peach.com",
     photoUrl: null, // Avatar
+
+    preferences: {
+      allowAds: false // Premium user opt-in
+    },
 
     alias: "My_Alias",
     level: "Year 2",
@@ -76,12 +84,52 @@ export const UserProvider = ({ children }) => {
       }
 
       setRippedMatches(prev => [...prev, matchId]);
+
+      // Initialize chat for new match
+      setChats(prev => ({
+        ...prev,
+        [matchId]: []
+      }));
+
       return true;
     }
     return false; // Limit reached, redirect handled in Discover
   };
 
   const isRipped = (matchId) => rippedMatches.includes(matchId);
+
+  // Chat Actions
+  const sendMessage = (matchId, text) => {
+    const newMessage = {
+      id: Date.now(),
+      text,
+      sender: 'me',
+      timestamp: new Date().toISOString()
+    };
+
+    setChats(prev => ({
+      ...prev,
+      [matchId]: [...(prev[matchId] || []), newMessage]
+    }));
+
+    // Simulate a reply after 2 seconds
+    setTimeout(() => {
+        const reply = {
+            id: Date.now() + 1,
+            text: "That's interesting! Tell me more about your shifts at the hospital.",
+            sender: 'them',
+            timestamp: new Date().toISOString()
+        };
+        setChats(prev => ({
+          ...prev,
+          [matchId]: [...(prev[matchId] || []), reply]
+        }));
+    }, 2000);
+  };
+
+  // Helper to add a wingman generated message directly to input or as a sent message?
+  // Usually the user reviews it first. So we just return the string in the UI.
+  // But if the user clicks "Send", we use sendMessage.
 
   // Admin Actions
   const deleteUser = (userId) => {
@@ -111,10 +159,18 @@ export const UserProvider = ({ children }) => {
 
   // Profile Updates
   const updateUserProfile = (updates) => {
-    setUserProfile(prev => ({
-      ...prev,
-      ...updates
-    }));
+    setUserProfile(prev => {
+      // Handle deep merge for nested objects if necessary, or simple merge
+      // For preferences, we might want specific handling if passed partially
+      if (updates.preferences) {
+        return {
+          ...prev,
+          ...updates,
+          preferences: { ...prev.preferences, ...updates.preferences }
+        };
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   // Business Account
@@ -138,6 +194,7 @@ export const UserProvider = ({ children }) => {
       subscription,
       ripenMatch,
       isRipped,
+      rippedMatches,
       userProfile,
       potentialMatches,
       deleteUser,
@@ -149,7 +206,9 @@ export const UserProvider = ({ children }) => {
       updateUserProfile,
       business,
       createBusinessAccount,
-      postAd
+      postAd,
+      chats,
+      sendMessage
     }}>
       {children}
     </UserContext.Provider>
