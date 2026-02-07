@@ -15,10 +15,15 @@ export const UserProvider = ({ children }) => {
   const [rippedMatches, setRippedMatches] = useState([]);
   const [potentialMatches, setPotentialMatches] = useState(MOCK_USERS);
   const [adsSeen, setAdsSeen] = useState(0);
+  const [business, setBusiness] = useState({ isBusiness: false, ads: [] });
 
   // Current user's preferences (mocked for matching logic)
-  // eslint-disable-next-line no-unused-vars
   const [userProfile, setUserProfile] = useState({
+    // Hardcoded read-only fields for now
+    name: "My Name",
+    email: "myemail@peach.com",
+    photoUrl: null, // Avatar
+
     alias: "My_Alias",
     level: "Year 2",
     basics: {
@@ -104,6 +109,30 @@ export const UserProvider = ({ children }) => {
     setAdsSeen(prev => prev + 1);
   };
 
+  // Profile Updates
+  const updateUserProfile = (updates) => {
+    setUserProfile(prev => ({
+      ...prev,
+      ...updates
+    }));
+  };
+
+  // Business Account
+  const createBusinessAccount = () => {
+    if (subscription.isPremium) {
+      setBusiness(prev => ({ ...prev, isBusiness: true }));
+      return true;
+    }
+    return false;
+  };
+
+  const postAd = (adData) => {
+    setBusiness(prev => ({
+      ...prev,
+      ads: [...prev.ads, { id: Date.now(), ...adData }]
+    }));
+  };
+
   return (
     <UserContext.Provider value={{
       subscription,
@@ -116,7 +145,11 @@ export const UserProvider = ({ children }) => {
       adsSeen,
       incrementAdsSeen,
       processUpgrade,
-      canRipen
+      canRipen,
+      updateUserProfile,
+      business,
+      createBusinessAccount,
+      postAd
     }}>
       {children}
     </UserContext.Provider>

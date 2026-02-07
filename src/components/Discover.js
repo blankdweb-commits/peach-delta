@@ -3,7 +3,7 @@ import { useUser } from '../context/UserContext';
 import AdBanner from './AdBanner';
 import { wingmanService } from '../services/wingmanService';
 
-const Discover = ({ onNavigateToStore }) => {
+const Discover = ({ onNavigateToStore, onNavigateToSettings }) => {
   const { userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen, subscription } = useUser();
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [notification, setNotification] = useState(null);
@@ -150,11 +150,14 @@ const Discover = ({ onNavigateToStore }) => {
     <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Discover Peaches 🍑</h2>
-        <div
-          onClick={onNavigateToStore}
-          style={{ fontWeight: 'bold', color: subscription.isPremium ? '#FFD700' : '#FF6347', cursor: 'pointer' }}
-        >
-          {subscription.isPremium ? "Premium 👑" : `${subscription.dailyUnripes}/25 Used`}
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>⚙️</button>
+          <div
+            onClick={onNavigateToStore}
+            style={{ fontWeight: 'bold', color: subscription.isPremium ? '#FFD700' : '#FF6347', cursor: 'pointer' }}
+          >
+            {subscription.isPremium ? "Premium 👑" : `${subscription.dailyUnripes}/25 Used`}
+          </div>
         </div>
       </header>
 
