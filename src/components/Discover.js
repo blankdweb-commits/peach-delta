@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
+import AdBanner from './AdBanner';
 
 const Discover = ({ onNavigateToStore }) => {
-  const { userProfile, potentialMatches, pits, ripenMatch, isRipped } = useUser();
+  const { userProfile, potentialMatches, pits, ripenMatch, isRipped, incrementAdsSeen } = useUser();
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [notification, setNotification] = useState(null);
+  const [actionsSinceAd, setActionsSinceAd] = useState(0);
+  const [showAd, setShowAd] = useState(false);
 
   const currentMatch = potentialMatches[currentMatchIndex];
 
@@ -38,6 +41,12 @@ const Discover = ({ onNavigateToStore }) => {
 
   useEffect(() => {
     if (currentMatch) {
+      // Check if match is banned or deleted (should be filtered out but good to be safe)
+      if (currentMatch.banned) {
+         handleNext(false); // Skip banned users silently
+         return;
+      }
+
       const { score, commonFun, commonValues, commonMedia } = calculateCompatibility(userProfile, currentMatch);
 
       if (isRipped(currentMatch.id)) {
@@ -71,7 +80,19 @@ const Discover = ({ onNavigateToStore }) => {
     }
   }, [currentMatchIndex, userProfile, currentMatch, isRipped]);
 
-  const handleNext = () => {
+  const handleAction = () => {
+    // Increment action count
+    const newCount = actionsSinceAd + 1;
+    setActionsSinceAd(newCount);
+
+    if (newCount >= 3) {
+      setShowAd(true);
+      setActionsSinceAd(0);
+    }
+  };
+
+  const handleNext = (countAction = true) => {
+    if (countAction) handleAction();
     setCurrentMatchIndex((prev) => (prev + 1) % potentialMatches.length);
   };
 
@@ -81,11 +102,21 @@ const Discover = ({ onNavigateToStore }) => {
       if (success) {
         alert("Match Ripened! You can now see their details.");
         setNotification(null);
+        handleAction(); // Ripening counts as an action
       }
     } else {
       onNavigateToStore();
     }
   };
+
+  const handleAdComplete = () => {
+    setShowAd(false);
+    if (incrementAdsSeen) incrementAdsSeen(); // Track ad views
+  };
+
+  if (showAd) {
+    return <AdBanner onAdComplete={handleAdComplete} />;
+  }
 
   if (!currentMatch) return <div>No more matches nearby!</div>;
 
@@ -210,7 +241,7 @@ const Discover = ({ onNavigateToStore }) => {
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '40px' }}>
         <button
-          onClick={handleNext}
+          onClick={() => handleNext(true)}
           style={{
             padding: '15px 30px',
             fontSize: '1rem',

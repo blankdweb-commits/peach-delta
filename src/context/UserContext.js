@@ -9,6 +9,8 @@ export const UserProvider = ({ children }) => {
   // Starter Kit: 25 Free Pits
   const [pits, setPits] = useState(25);
   const [rippedMatches, setRippedMatches] = useState([]);
+  const [potentialMatches, setPotentialMatches] = useState(MOCK_USERS);
+  const [adsSeen, setAdsSeen] = useState(0);
 
   // Current user's preferences (mocked for matching logic)
   const [userProfile, setUserProfile] = useState({
@@ -58,6 +60,22 @@ export const UserProvider = ({ children }) => {
 
   const isRipped = (matchId) => rippedMatches.includes(matchId);
 
+  // Admin Actions
+  const deleteUser = (userId) => {
+    setPotentialMatches(prev => prev.filter(user => user.id !== userId));
+  };
+
+  const banUser = (userId) => {
+    setPotentialMatches(prev => prev.map(user =>
+      user.id === userId ? { ...user, banned: true } : user
+    ));
+  };
+
+  // Ad Tracking
+  const incrementAdsSeen = () => {
+    setAdsSeen(prev => prev + 1);
+  };
+
   return (
     <UserContext.Provider value={{
       pits,
@@ -65,7 +83,11 @@ export const UserProvider = ({ children }) => {
       ripenMatch,
       isRipped,
       userProfile,
-      potentialMatches: MOCK_USERS
+      potentialMatches,
+      deleteUser,
+      banUser,
+      adsSeen,
+      incrementAdsSeen
     }}>
       {children}
     </UserContext.Provider>
