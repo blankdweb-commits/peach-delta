@@ -4,9 +4,9 @@ import AdminDashboard from './AdminDashboard';
 import { AdminContext } from '../context/AdminContext';
 import { UserContext } from '../context/UserContext';
 
-const renderAdmin = (ui, { isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser, pits, potentialMatches }) => {
+const renderAdmin = (ui, { isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser, subscription, potentialMatches }) => {
   return render(
-    <UserContext.Provider value={{ pits, potentialMatches }}>
+    <UserContext.Provider value={{ subscription, potentialMatches }}>
       <AdminContext.Provider value={{ isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser }}>
         {ui}
       </AdminContext.Provider>
@@ -15,6 +15,7 @@ const renderAdmin = (ui, { isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser
 };
 
 const mockUser = { id: 1, alias: "User1", realName: "Real1", banned: false };
+const mockSubscription = { isPremium: false, dailyUnripes: 0, lastReset: '2023-01-01' };
 
 describe('Admin Dashboard', () => {
   test('shows login form when not logged in', () => {
@@ -24,7 +25,7 @@ describe('Admin Dashboard', () => {
       logoutAdmin: jest.fn(),
       deleteUser: jest.fn(),
       banUser: jest.fn(),
-      pits: 100,
+      subscription: mockSubscription,
       potentialMatches: []
     });
 
@@ -40,7 +41,7 @@ describe('Admin Dashboard', () => {
       logoutAdmin: jest.fn(),
       deleteUser: jest.fn(),
       banUser: jest.fn(),
-      pits: 100,
+      subscription: mockSubscription,
       potentialMatches: []
     });
 
@@ -57,7 +58,7 @@ describe('Admin Dashboard', () => {
       logoutAdmin: jest.fn(),
       deleteUser: jest.fn(),
       banUser: jest.fn(),
-      pits: 100,
+      subscription: mockSubscription,
       potentialMatches: [mockUser]
     });
 
@@ -73,7 +74,7 @@ describe('Admin Dashboard', () => {
       logoutAdmin: jest.fn(),
       deleteUser: jest.fn(),
       banUser,
-      pits: 100,
+      subscription: mockSubscription,
       potentialMatches: [mockUser]
     });
 
@@ -89,7 +90,7 @@ describe('Admin Dashboard', () => {
       logoutAdmin: jest.fn(),
       deleteUser,
       banUser: jest.fn(),
-      pits: 100,
+      subscription: mockSubscription,
       potentialMatches: [mockUser]
     });
 

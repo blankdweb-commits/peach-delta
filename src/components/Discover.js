@@ -3,7 +3,7 @@ import { useUser } from '../context/UserContext';
 import AdBanner from './AdBanner';
 
 const Discover = ({ onNavigateToStore }) => {
-  const { userProfile, potentialMatches, pits, ripenMatch, isRipped, incrementAdsSeen } = useUser();
+  const { userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen, subscription } = useUser();
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [notification, setNotification] = useState(null);
   const [actionsSinceAd, setActionsSinceAd] = useState(0);
@@ -12,13 +12,7 @@ const Discover = ({ onNavigateToStore }) => {
   const currentMatch = potentialMatches[currentMatchIndex];
 
   const calculateCompatibility = (user, match) => {
-    // Matching Logic:
-    // 1. Fun (Tags): 20% max (approx 7% per match, cap at 20)
-    // 2. Media (Tags): 20% max
-    // 3. Values (Tags): 30% max (10% each)
-    // 4. Location (Based): 20% if same
-    // 5. Looking For: 10% if same
-
+    // Matching Logic (same as before)
     if (!match.basics || !match.relationships || !match.life) return { score: 0, commonFun: [], commonValues: [] };
 
     const commonFun = user.basics.fun.filter(f => match.basics.fun.includes(f));
@@ -26,7 +20,6 @@ const Discover = ({ onNavigateToStore }) => {
     const commonValues = user.relationships.values.filter(v => match.relationships.values.includes(v));
 
     let score = 0;
-
     score += Math.min(commonFun.length * 7, 20);
     score += Math.min(commonMedia.length * 7, 20);
     score += Math.min(commonValues.length * 10, 30);
@@ -41,9 +34,8 @@ const Discover = ({ onNavigateToStore }) => {
 
   useEffect(() => {
     if (currentMatch) {
-      // Check if match is banned or deleted (should be filtered out but good to be safe)
       if (currentMatch.banned) {
-         handleNext(false); // Skip banned users silently
+         handleNext(false);
          return;
       }
 
@@ -54,14 +46,14 @@ const Discover = ({ onNavigateToStore }) => {
         return;
       }
 
-      if (score >= 80) { // Lowered threshold slightly as strict tag matching is harder
+      if (score >= 80) {
         const rand = Math.random();
         let message = "";
         const getRandom = (arr) => arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
 
         if (rand < 0.33 && commonFun.length > 0) {
            const funItem = getRandom(commonFun);
-           message = `Sweet like Nectar! 🍯 You and ${currentMatch.alias} match ${score}%. You both enjoy ${funItem}! Use 5 Pits to see your twin!`;
+           message = `Sweet like Nectar! 🍯 You and ${currentMatch.alias} match ${score}%. You both enjoy ${funItem}! Reveal your twin now!`;
         } else if (rand < 0.66 && commonValues.length > 0) {
            const valueItem = getRandom(commonValues);
            message = `Deep Connection Alert! 💫 You and ${currentMatch.alias} match ${score}%. You both value ${valueItem}. Ripen the connection now! 🍑`;
@@ -85,7 +77,8 @@ const Discover = ({ onNavigateToStore }) => {
     const newCount = actionsSinceAd + 1;
     setActionsSinceAd(newCount);
 
-    if (newCount >= 3) {
+    // Only show ads if NOT Premium
+    if (!subscription.isPremium && newCount >= 3) {
       setShowAd(true);
       setActionsSinceAd(0);
     }
@@ -96,22 +89,21 @@ const Discover = ({ onNavigateToStore }) => {
     setCurrentMatchIndex((prev) => (prev + 1) % potentialMatches.length);
   };
 
-  const handleRipenAction = () => {
-    if (pits >= 5) {
-      const success = ripenMatch(currentMatch.id);
-      if (success) {
-        alert("Match Ripened! You can now see their details.");
-        setNotification(null);
-        handleAction(); // Ripening counts as an action
-      }
+  const handleRipenAction = async () => {
+    const success = await ripenMatch(currentMatch.id);
+    if (success) {
+      alert("Match Ripened! You can now see their details.");
+      setNotification(null);
+      handleAction();
     } else {
-      onNavigateToStore();
+      // Failed (Limit Reached)
+      onNavigateToStore(); // Navigate to Membership
     }
   };
 
   const handleAdComplete = () => {
     setShowAd(false);
-    if (incrementAdsSeen) incrementAdsSeen(); // Track ad views
+    if (incrementAdsSeen) incrementAdsSeen();
   };
 
   if (showAd) {
@@ -123,7 +115,19 @@ const Discover = ({ onNavigateToStore }) => {
   const { score } = calculateCompatibility(userProfile, currentMatch);
   const isMatchRipped = isRipped(currentMatch.id);
 
-  // Styles for the "Clean. Breathable." look
+  // Logic for Button Text
+  let buttonText = "";
+  if (subscription.isPremium) {
+    buttonText = "Ripen Now 👑";
+  } else {
+    if (subscription.dailyUnripes >= 25) {
+      buttonText = "Limit Reached - Upgrade";
+    } else {
+      buttonText = `Ripen (${25 - subscription.dailyUnripes} left today)`;
+    }
+  }
+
+  // Styles
   const sectionStyle = { marginBottom: '25px' };
   const labelStyle = { color: '#888', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '8px', display: 'block' };
   const textStyle = { fontSize: '1.1rem', color: '#333', lineHeight: '1.5' };
@@ -133,7 +137,12 @@ const Discover = ({ onNavigateToStore }) => {
     <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Discover Peaches 🍑</h2>
-        <div style={{ fontWeight: 'bold', color: '#FF6347' }}>{pits} Pits</div>
+        <div
+          onClick={onNavigateToStore}
+          style={{ fontWeight: 'bold', color: subscription.isPremium ? '#FFD700' : '#FF6347', cursor: 'pointer' }}
+        >
+          {subscription.isPremium ? "Premium 👑" : `${subscription.dailyUnripes}/25 Used`}
+        </div>
       </header>
 
       {notification && (
@@ -149,7 +158,7 @@ const Discover = ({ onNavigateToStore }) => {
           <button
             onClick={handleRipenAction}
             style={{
-              backgroundColor: '#FF6347',
+              backgroundColor: subscription.dailyUnripes >= 25 && !subscription.isPremium ? '#333' : '#FF6347',
               color: 'white',
               border: 'none',
               padding: '12px 24px',
@@ -160,7 +169,7 @@ const Discover = ({ onNavigateToStore }) => {
               marginTop: '10px'
             }}
           >
-            {pits >= 5 ? "Ripen Now (5 Pits)" : "Get Pits to Ripen"}
+            {buttonText}
           </button>
         </div>
       )}
@@ -260,7 +269,7 @@ const Discover = ({ onNavigateToStore }) => {
              style={{
                padding: '15px 30px',
                fontSize: '1rem',
-               background: '#FF6347',
+               background: subscription.dailyUnripes >= 25 && !subscription.isPremium ? '#333' : '#FF6347',
                color: 'white',
                border: 'none',
                borderRadius: '30px',
@@ -268,7 +277,7 @@ const Discover = ({ onNavigateToStore }) => {
                boxShadow: '0 4px 10px rgba(255, 99, 71, 0.3)'
              }}
            >
-             Ripen (5 Pits)
+             {buttonText}
            </button>
         )}
       </div>

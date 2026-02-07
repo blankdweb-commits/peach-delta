@@ -4,7 +4,7 @@ import { useUser } from '../context/UserContext';
 
 const AdminDashboard = ({ onBack }) => {
   const { isAdmin, loginAdmin, logoutAdmin, deleteUser, banUser } = useAdmin();
-  const { potentialMatches, pits } = useUser();
+  const { potentialMatches, subscription } = useUser();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -38,6 +38,9 @@ const AdminDashboard = ({ onBack }) => {
     );
   }
 
+  // Count premium users (just our single user for now in this context model)
+  const premiumCount = subscription.isPremium ? 1 : 0;
+
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
@@ -51,8 +54,8 @@ const AdminDashboard = ({ onBack }) => {
           <p style={{ fontSize: '2rem', margin: 0 }}>{potentialMatches.length}</p>
         </div>
         <div style={{ padding: '20px', background: '#f9f9f9', borderRadius: '10px' }}>
-          <h3>Current User Pits</h3>
-          <p style={{ fontSize: '2rem', margin: 0 }}>{pits}</p>
+          <h3>Premium Members</h3>
+          <p style={{ fontSize: '2rem', margin: 0 }}>{premiumCount}</p>
         </div>
       </div>
 

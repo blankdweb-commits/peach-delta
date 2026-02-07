@@ -5,9 +5,9 @@ import { UserContext } from '../context/UserContext';
 import { act } from 'react';
 
 // Helper to provide context
-const renderWithContext = (ui, { pits, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }) => {
+const renderWithContext = (ui, { subscription, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }) => {
   return render(
-    <UserContext.Provider value={{ pits, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }}>
+    <UserContext.Provider value={{ subscription, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }}>
       {ui}
     </UserContext.Provider>
   );
@@ -42,6 +42,8 @@ const mockMatch2 = { ...mockMatch, id: 2, alias: "Match2" };
 const mockMatch3 = { ...mockMatch, id: 3, alias: "Match3" };
 const mockMatch4 = { ...mockMatch, id: 4, alias: "Match4" };
 
+const mockSubscription = { isPremium: false, dailyUnripes: 0, lastReset: '2023-01-01' };
+
 describe('Discover Component Ads', () => {
   let originalMathRandom;
 
@@ -61,7 +63,7 @@ describe('Discover Component Ads', () => {
     renderWithContext(
       <Discover onNavigateToStore={jest.fn()} />,
       {
-        pits: 25,
+        subscription: mockSubscription,
         userProfile: mockUserProfile,
         potentialMatches: [mockMatch, mockMatch2, mockMatch3, mockMatch4],
         ripenMatch: jest.fn(),

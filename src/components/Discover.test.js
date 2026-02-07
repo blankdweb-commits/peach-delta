@@ -5,9 +5,9 @@ import { UserContext } from '../context/UserContext';
 import { act } from 'react';
 
 // Helper to provide context
-const renderWithContext = (ui, { pits, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }) => {
+const renderWithContext = (ui, { subscription, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }) => {
   return render(
-    <UserContext.Provider value={{ pits, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }}>
+    <UserContext.Provider value={{ subscription, userProfile, potentialMatches, ripenMatch, isRipped, incrementAdsSeen }}>
       {ui}
     </UserContext.Provider>
   );
@@ -15,22 +15,10 @@ const renderWithContext = (ui, { pits, userProfile, potentialMatches, ripenMatch
 
 const mockUserProfile = {
   alias: "TestUser",
-  basics: {
-      fun: ["A", "B", "C"],
-      media: ["X", "Y", "Z"]
-  },
-  life: {
-      based: "Sapele",
-      upbringing: "Strict"
-  },
-  work: {
-      job: "Nurse",
-      reason: "Love it"
-  },
-  relationships: {
-      values: ["Honesty", "Family", "Trust"],
-      lookingFor: "Long-term"
-  },
+  basics: { fun: ["A", "B", "C"], media: ["X", "Y", "Z"] },
+  life: { based: "Sapele", upbringing: "Strict" },
+  work: { job: "Nurse", reason: "Love it" },
+  relationships: { values: ["Honesty", "Family", "Trust"], lookingFor: "Long-term" },
   vision: "Peace",
   special: "Love"
 };
@@ -42,56 +30,19 @@ const highMatch = {
   realName: "Real Name",
   photoUrl: "url",
   distance: 1,
-  basics: {
-      fun: ["A", "B", "C"],
-      media: ["X", "Y", "Z"]
-  },
-  life: {
-      based: "Sapele",
-      upbringing: "Strict"
-  },
-  work: {
-      job: "Nurse",
-      reason: "Love it"
-  },
-  relationships: {
-      values: ["Honesty", "Family", "Trust"],
-      lookingFor: "Long-term"
-  },
+  basics: { fun: ["A", "B", "C"], media: ["X", "Y", "Z"] },
+  life: { based: "Sapele", upbringing: "Strict" },
+  work: { job: "Nurse", reason: "Love it" },
+  relationships: { values: ["Honesty", "Family", "Trust"], lookingFor: "Long-term" },
   vision: "Peace",
   special: "Love"
 };
 
-const lowMatch = {
-  id: 2,
-  alias: "LowMatch",
-  level: "Year 1",
-  realName: "Other Name",
-  photoUrl: "url",
-  distance: 10,
-  basics: {
-      fun: ["D"],
-      media: ["U"]
-  },
-  life: {
-      based: "Warri",
-      upbringing: "Urban"
-  },
-  work: {
-      job: "Student",
-      reason: "Study"
-  },
-  relationships: {
-      values: ["Ambition"],
-      lookingFor: "Casual"
-  },
-  vision: "Wealth",
-  special: "Hustle"
+const defaultSubscription = {
+  isPremium: false,
+  dailyUnripes: 0,
+  lastReset: "2023-01-01"
 };
-
-const mockMatch2 = { ...lowMatch, id: 3, alias: "Match2" };
-const mockMatch3 = { ...lowMatch, id: 4, alias: "Match3" };
-const mockMatch4 = { ...lowMatch, id: 5, alias: "Match4" };
 
 describe('Discover Component', () => {
   let originalMathRandom;
@@ -104,12 +55,12 @@ describe('Discover Component', () => {
     Math.random = originalMathRandom;
   });
 
-  test('shows Template 1 for high match (Sweet like Nectar)', () => {
+  test('button says "Ripen Now 👑" when Premium', () => {
     Math.random = jest.fn(() => 0.1);
     renderWithContext(
       <Discover onNavigateToStore={jest.fn()} />,
       {
-        pits: 25,
+        subscription: { ...defaultSubscription, isPremium: true },
         userProfile: mockUserProfile,
         potentialMatches: [highMatch],
         ripenMatch: jest.fn(),
@@ -117,47 +68,67 @@ describe('Discover Component', () => {
         incrementAdsSeen: jest.fn()
       }
     );
-    expect(screen.getByText(/Sweet like Nectar!/i)).toBeInTheDocument();
+
+    expect(screen.getByText("Ripen Now 👑")).toBeInTheDocument();
   });
 
-  test('shows ad after 3 actions (integration check)', async () => {
-    jest.useFakeTimers();
-    const incrementAdsSeen = jest.fn();
-
-    // Setup matches to iterate through
-    const matches = [highMatch, lowMatch, mockMatch2, mockMatch3, mockMatch4];
-
+  test('button says "Ripen (X left)" when Free and limit ok', () => {
+    Math.random = jest.fn(() => 0.1);
     renderWithContext(
       <Discover onNavigateToStore={jest.fn()} />,
       {
-        pits: 25,
+        subscription: { ...defaultSubscription, dailyUnripes: 5 },
         userProfile: mockUserProfile,
-        potentialMatches: matches,
+        potentialMatches: [highMatch],
         ripenMatch: jest.fn(),
         isRipped: () => false,
-        incrementAdsSeen
+        incrementAdsSeen: jest.fn()
       }
     );
 
-    // 1. Skip HighMatch
-    fireEvent.click(screen.getByText("Skip"));
+    // 25 - 5 = 20 left
+    expect(screen.getByText(/Ripen \(20 left today\)/i)).toBeInTheDocument();
+  });
 
-    // 2. Skip LowMatch
-    fireEvent.click(screen.getByText("Skip"));
+  test('button says "Limit Reached - Upgrade" when Free and limit exceeded', () => {
+    Math.random = jest.fn(() => 0.1);
+    renderWithContext(
+      <Discover onNavigateToStore={jest.fn()} />,
+      {
+        subscription: { ...defaultSubscription, dailyUnripes: 25 },
+        userProfile: mockUserProfile,
+        potentialMatches: [highMatch],
+        ripenMatch: jest.fn(),
+        isRipped: () => false,
+        incrementAdsSeen: jest.fn()
+      }
+    );
 
-    // 3. Skip Match2 -> Should trigger ad
-    fireEvent.click(screen.getByText("Skip"));
+    expect(screen.getByText("Limit Reached - Upgrade")).toBeInTheDocument();
+  });
 
-    expect(screen.getByText("Sponsored Ad")).toBeInTheDocument();
+  test('redirects to store (membership) when limit reached button clicked', async () => {
+    Math.random = jest.fn(() => 0.1);
+    const handleNavigate = jest.fn();
+    const handleRipen = jest.fn(() => false); // Returns false as ripen fails
 
-    // Advance timer
-    act(() => {
-      jest.advanceTimersByTime(3000);
+    renderWithContext(
+      <Discover onNavigateToStore={handleNavigate} />,
+      {
+        subscription: { ...defaultSubscription, dailyUnripes: 25 },
+        userProfile: mockUserProfile,
+        potentialMatches: [highMatch],
+        ripenMatch: handleRipen,
+        isRipped: () => false,
+        incrementAdsSeen: jest.fn()
+      }
+    );
+
+    await act(async () => {
+        fireEvent.click(screen.getByText("Limit Reached - Upgrade"));
     });
 
-    expect(screen.queryByText("Sponsored Ad")).not.toBeInTheDocument();
-    expect(incrementAdsSeen).toHaveBeenCalled();
-
-    jest.useRealTimers();
+    expect(handleRipen).toHaveBeenCalled();
+    expect(handleNavigate).toHaveBeenCalled();
   });
 });

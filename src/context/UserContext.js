@@ -1,13 +1,17 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { MOCK_USERS } from '../data/mockData';
+import { mockBackend } from '../services/mockBackend';
 
 export const UserContext = createContext();
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  // Starter Kit: 25 Free Pits
-  const [pits, setPits] = useState(25);
+  const [subscription, setSubscription] = useState({
+    isPremium: false,
+    dailyUnripes: 0,
+    lastReset: new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  });
   const [rippedMatches, setRippedMatches] = useState([]);
   const [potentialMatches, setPotentialMatches] = useState(MOCK_USERS);
   const [adsSeen, setAdsSeen] = useState(0);
@@ -36,26 +40,39 @@ export const UserProvider = ({ children }) => {
     special: "Communication is key to everything."
   });
 
-  const addPits = (amount) => {
-    setPits(prev => prev + amount);
-  };
-
-  const deductPits = (amount) => {
-    if (pits >= amount) {
-      setPits(prev => prev - amount);
-      return true;
+  // Daily Reset Logic
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (subscription.lastReset !== today) {
+      setSubscription(prev => ({
+        ...prev,
+        dailyUnripes: 0,
+        lastReset: today
+      }));
     }
-    return false;
+  }, [subscription.lastReset]);
+
+  const canRipen = () => {
+    if (subscription.isPremium) return true;
+    return subscription.dailyUnripes < 25;
   };
 
-  const ripenMatch = (matchId) => {
+  const ripenMatch = async (matchId) => {
     if (rippedMatches.includes(matchId)) return true;
 
-    if (deductPits(5)) {
+    if (canRipen()) {
+      // If free user, increment count
+      if (!subscription.isPremium) {
+         setSubscription(prev => ({
+           ...prev,
+           dailyUnripes: prev.dailyUnripes + 1
+         }));
+      }
+
       setRippedMatches(prev => [...prev, matchId]);
       return true;
     }
-    return false;
+    return false; // Limit reached, redirect handled in Discover
   };
 
   const isRipped = (matchId) => rippedMatches.includes(matchId);
@@ -71,6 +88,16 @@ export const UserProvider = ({ children }) => {
     ));
   };
 
+  // Membership Actions
+  const processUpgrade = async (paymentReference) => {
+    const result = await mockBackend.verifyPayment(paymentReference);
+    if (result.status) {
+      setSubscription(prev => ({ ...prev, isPremium: true }));
+      return true;
+    }
+    return false;
+  };
+
   // Ad Tracking
   const incrementAdsSeen = () => {
     setAdsSeen(prev => prev + 1);
@@ -78,8 +105,7 @@ export const UserProvider = ({ children }) => {
 
   return (
     <UserContext.Provider value={{
-      pits,
-      addPits,
+      subscription,
       ripenMatch,
       isRipped,
       userProfile,
@@ -87,7 +113,9 @@ export const UserProvider = ({ children }) => {
       deleteUser,
       banUser,
       adsSeen,
-      incrementAdsSeen
+      incrementAdsSeen,
+      processUpgrade,
+      canRipen
     }}>
       {children}
     </UserContext.Provider>
