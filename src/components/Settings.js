@@ -2,13 +2,21 @@ import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { mockBackend } from '../services/mockBackend';
 import FeedbackHandler from './FeedbackHandler';
+import KYCVerification from './KYCVerification';
 
-const Settings = ({ onNavigateToMembership }) => {
-  const { userProfile, updateUserProfile, subscription, business, createBusinessAccount, postAd, setOnboardingComplete, submitFeedback } = useUser();
+const Settings = ({ onNavigateToMembership, onNavigateToAdmin }) => {
+  const { userProfile, updateUserProfile, subscription, business, createBusinessAccount, postAd, setOnboardingComplete, submitFeedback, logoutUser, kycStatus } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
-  const [adForm, setAdForm] = useState({ title: '', content: '' });
+  const [adForm, setAdForm] = useState({
+    title: '',
+    content: '',
+    price: '',
+    image: null,
+    headline: ''
+  });
   const [processingAd, setProcessingAd] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showKYC, setShowKYC] = useState(false);
 
   // Handle Profile Inputs
   const handleProfileChange = (field, value) => {
@@ -40,8 +48,20 @@ const Settings = ({ onNavigateToMembership }) => {
     });
   };
 
+  const handleAdImageUpload = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+          setAdForm({ ...adForm, image: URL.createObjectURL(file) });
+      }
+  };
+
   // Handle Business Logic
   const handleCreateBusiness = () => {
+    if (kycStatus !== 'verified') {
+        setShowKYC(true);
+        return;
+    }
+
     if (createBusinessAccount()) {
       alert("Business Account Created! You can now post ads.");
     } else {
@@ -51,6 +71,10 @@ const Settings = ({ onNavigateToMembership }) => {
 
   const handlePostAd = async (e) => {
     e.preventDefault();
+    if (!adForm.image) {
+        alert("Please upload an image for your ad.");
+        return;
+    }
     setProcessingAd(true);
 
     // Simulate Payment for Ad (1200 Naira)
@@ -60,7 +84,7 @@ const Settings = ({ onNavigateToMembership }) => {
 
       setProcessingAd(false);
       if (success) {
-        setAdForm({ title: '', content: '' });
+        setAdForm({ title: '', content: '', price: '', image: null, headline: '' });
         alert("Ad Posted Successfully! (₦1,200 deducted)");
       } else {
         alert("Payment Failed.");
@@ -89,6 +113,10 @@ const Settings = ({ onNavigateToMembership }) => {
     color: isActive ? '#333' : '#888',
     backgroundColor: isActive ? '#fff' : '#f9f9f9'
   });
+
+  if (showKYC) {
+      return <KYCVerification onBack={() => setShowKYC(false)} />;
+  }
 
   return (
     <div style={containerStyle}>
@@ -195,6 +223,22 @@ const Settings = ({ onNavigateToMembership }) => {
           </div>
 
           <div style={{ marginTop: '30px' }}>
+            <h4>Identity Verification</h4>
+            <div
+                onClick={() => setShowKYC(true)}
+                style={{
+                    padding: '15px', border: '1px solid #eee', borderRadius: '10px', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'
+                }}
+            >
+                <span>Status:
+                    {kycStatus === 'verified' && <strong style={{ color: 'green' }}> Verified ✅</strong>}
+                    {kycStatus === 'pending' && <strong style={{ color: 'orange' }}> Pending ⏳</strong>}
+                    {kycStatus === 'rejected' && <strong style={{ color: 'red' }}> Rejected ❌</strong>}
+                </span>
+                <button style={{ border: 'none', background: 'none', color: '#FF6347' }}>{kycStatus === 'verified' ? 'View' : 'Verify Now'}</button>
+            </div>
+
             <h4>Help & Support</h4>
             <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
                 <button
@@ -208,6 +252,18 @@ const Settings = ({ onNavigateToMembership }) => {
                   style={{ padding: '10px', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer', textAlign: 'left' }}
                 >
                   💬 Send Feedback / Report Bug
+                </button>
+                <button
+                  onClick={onNavigateToAdmin}
+                  style={{ padding: '10px', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer', textAlign: 'left', color: '#666' }}
+                >
+                  🔒 Admin Dashboard
+                </button>
+                <button
+                  onClick={logoutUser}
+                  style={{ padding: '10px', background: '#ffebee', border: '1px solid #ffcdd2', borderRadius: '5px', cursor: 'pointer', textAlign: 'left', color: '#d32f2f' }}
+                >
+                  🚪 Logout
                 </button>
             </div>
           </div>
@@ -228,7 +284,8 @@ const Settings = ({ onNavigateToMembership }) => {
             <>
               {!business.isBusiness ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <p>You are a Premium Member! Create a business profile to start posting ads.</p>
+                  <p>Create a business profile to start posting ads.</p>
+                  {kycStatus !== 'verified' && <p style={{ color: 'red', fontSize: '0.9rem' }}>⚠️ Identity Verification Required</p>}
                   <button onClick={handleCreateBusiness} style={buttonStyle}>Create Business Account</button>
                 </div>
               ) : (
@@ -237,19 +294,39 @@ const Settings = ({ onNavigateToMembership }) => {
                     <h4>Post a New Ad (₦1,200)</h4>
                     <form onSubmit={handlePostAd}>
                       <input
-                        placeholder="Ad Title"
+                        placeholder="Ad Title (e.g. Clinic Discount)"
                         style={inputStyle}
                         value={adForm.title}
                         onChange={(e) => setAdForm({ ...adForm, title: e.target.value })}
                         required
                       />
+                      <input
+                        placeholder="Catchy Headline (Capture)"
+                        style={inputStyle}
+                        value={adForm.headline}
+                        onChange={(e) => setAdForm({ ...adForm, headline: e.target.value })}
+                        required
+                      />
+                      <input
+                        placeholder="Price / Offer (e.g. 50% Off)"
+                        style={inputStyle}
+                        value={adForm.price}
+                        onChange={(e) => setAdForm({ ...adForm, price: e.target.value })}
+                        required
+                      />
                       <textarea
-                        placeholder="Ad Content"
+                        placeholder="Description"
                         style={inputStyle}
                         value={adForm.content}
                         onChange={(e) => setAdForm({ ...adForm, content: e.target.value })}
                         required
                       />
+                      <div style={{ marginBottom: '15px' }}>
+                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Ad Image</label>
+                          <input type="file" accept="image/*" onChange={handleAdImageUpload} />
+                          {adForm.image && <img src={adForm.image} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', marginTop: '10px', borderRadius: '5px' }} />}
+                      </div>
+
                       <button
                         type="submit"
                         style={{ ...buttonStyle, opacity: processingAd ? 0.7 : 1 }}
@@ -266,9 +343,13 @@ const Settings = ({ onNavigateToMembership }) => {
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                       {business.ads.map(ad => (
-                        <li key={ad.id} style={{ padding: '15px', borderBottom: '1px solid #eee' }}>
-                          <strong>{ad.title}</strong>
-                          <p>{ad.content}</p>
+                        <li key={ad.id} style={{ padding: '15px', borderBottom: '1px solid #eee', display: 'flex', gap: '15px' }}>
+                          <img src={ad.image || 'https://via.placeholder.com/80'} alt="Ad" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '5px' }} />
+                          <div>
+                              <strong>{ad.title}</strong>
+                              <div style={{ fontSize: '0.9rem', color: '#666' }}>{ad.headline}</div>
+                              <div style={{ color: '#FF6347', fontWeight: 'bold' }}>{ad.price}</div>
+                          </div>
                         </li>
                       ))}
                     </ul>

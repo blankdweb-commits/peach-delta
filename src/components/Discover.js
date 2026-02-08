@@ -175,12 +175,8 @@ const Discover = ({ onNavigateToStore, onNavigateToSettings, onNavigateToChats }
 
   return (
     <div className="discover-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      <header style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', zIndex: 100 }}>
+      <header style={{ padding: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'white', zIndex: 100 }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0 }}>Discover 🍑</h2>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <button onClick={onNavigateToChats} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>💬</button>
-          <button onClick={onNavigateToSettings} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>⚙️</button>
-        </div>
       </header>
 
       <div className="card-container" style={{ position: 'relative', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

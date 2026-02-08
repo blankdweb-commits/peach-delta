@@ -18,6 +18,7 @@ export const UserProvider = ({ children }) => {
   const [adsSeen, setAdsSeen] = useState(0);
   const [business, setBusiness] = useState({ isBusiness: false, ads: [] });
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [kycStatus, setKycStatus] = useState('pending'); // pending, verified, rejected
 
   // Chat State
   const [chats, setChats] = useState({});
@@ -178,7 +179,7 @@ export const UserProvider = ({ children }) => {
   };
 
   const createBusinessAccount = () => {
-    if (subscription.isPremium) {
+    if (subscription.isPremium && kycStatus === 'verified') {
       setBusiness(prev => ({ ...prev, isBusiness: true }));
       return true;
     }
@@ -199,6 +200,10 @@ export const UserProvider = ({ children }) => {
     console.log("Feedback received:", data);
   };
 
+  const updateKYC = (status) => {
+      setKycStatus(status);
+  };
+
   return (
     <UserContext.Provider value={{
       currentUser, loginUser, signupUser, logoutUser,
@@ -206,7 +211,8 @@ export const UserProvider = ({ children }) => {
       deleteUser, banUser, grantPremium, revokePremium,
       adsSeen, incrementAdsSeen, processUpgrade, canRipen, updateUserProfile,
       business, createBusinessAccount, postAd, chats, sendMessage,
-      onboardingComplete, setOnboardingComplete, submitFeedback, feedback
+      onboardingComplete, setOnboardingComplete, submitFeedback, feedback,
+      kycStatus, updateKYC
     }}>
       {children}
     </UserContext.Provider>

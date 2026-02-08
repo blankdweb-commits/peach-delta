@@ -8,8 +8,8 @@ const Onboarding = ({ onComplete }) => {
     email: '',
     verified: false,
     alias: '',
-    level: 'Year 1',
-    location: 'Sapele',
+    level: '',
+    location: '',
     sweetPeaches: [],
     bruisedPeaches: []
   });
@@ -19,9 +19,22 @@ const Onboarding = ({ onComplete }) => {
   const SWEET_PEACHES = ['Night shifts', 'Suya after rounds', 'Anatomy study', 'Pediatric ward', 'Boat club vibes', 'Skincare'];
   const BRUISED_PEACHES = ['8 AM lectures', 'Rude preceptors', 'Double shifts', 'Ghosting', 'Heavy textbooks', 'PHCN blackouts'];
 
+  const calculateCompletion = () => {
+      let filled = 0;
+      let total = 6; // Alias, Level, Location, Sweet(3), Bruised(3) -> simplified: 3 fields + 2 lists
+      // Weighting: Alias(20), Level(20), Location(20), Sweet(20), Bruised(20)
+
+      if (formData.alias) filled += 20;
+      if (formData.level) filled += 20;
+      if (formData.location) filled += 20;
+      if (formData.sweetPeaches.length > 0) filled += 20;
+      if (formData.bruisedPeaches.length > 0) filled += 20;
+
+      return filled;
+  };
+
   const handleVerify = () => {
     if (formData.email.includes('@')) {
-      // Simulate verification
       setTimeout(() => {
         setFormData({ ...formData, verified: true });
         alert("Email Verified! Starter bonus claimed.");
@@ -46,21 +59,35 @@ const Onboarding = ({ onComplete }) => {
   };
 
   const handleFinish = () => {
-    // Save to context
     updateUserProfile({
       email: formData.email,
-      alias: formData.alias,
-      level: formData.level,
-      life: { based: formData.location },
-      basics: { fun: formData.sweetPeaches }, // Mapping sweet peaches to fun for matching
-      // We could store bruised peaches too but matching logic uses likes mainly for now
+      alias: formData.alias || 'Anonymous',
+      level: formData.level || 'Unknown',
+      life: { based: formData.location || 'Delta' },
+      basics: { fun: formData.sweetPeaches },
     });
-
-    // Mark as complete in context (we need to add this function to UserContext)
     if (setOnboardingComplete) setOnboardingComplete(true);
-
-    onComplete(); // Navigate to App
+    onComplete();
   };
+
+  const handleSkip = () => {
+      const completion = calculateCompletion();
+      if (completion >= 60) {
+          if (step < 4) setStep(step + 1);
+          else handleFinish();
+      } else {
+          if (window.confirm("Your profile is less than 60% complete. You might get fewer matches. Continue?")) {
+              if (step < 4) setStep(step + 1);
+              else handleFinish();
+          }
+      }
+  };
+
+  const ProgressBar = () => (
+      <div style={{ width: '100%', height: '5px', background: '#eee', marginBottom: '20px', borderRadius: '5px' }}>
+          <div style={{ width: `${(step / 4) * 100}%`, height: '100%', background: '#FF6347', borderRadius: '5px', transition: 'width 0.3s' }}></div>
+      </div>
+  );
 
   const renderStep1 = () => (
     <div style={{ textAlign: 'center' }}>
@@ -102,6 +129,7 @@ const Onboarding = ({ onComplete }) => {
           onChange={(e) => setFormData({ ...formData, level: e.target.value })}
           style={{ padding: '10px', width: '85%', borderRadius: '5px', border: '1px solid #ccc' }}
         >
+          <option value="">Select Level</option>
           {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
       </div>
@@ -112,16 +140,25 @@ const Onboarding = ({ onComplete }) => {
           onChange={(e) => setFormData({ ...formData, location: e.target.value })}
           style={{ padding: '10px', width: '85%', borderRadius: '5px', border: '1px solid #ccc' }}
         >
+          <option value="">Select Location</option>
           {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
       </div>
-      <button
-        onClick={() => setStep(3)}
-        disabled={!formData.alias}
-        style={{ padding: '10px 30px', background: formData.alias ? '#FF6347' : '#ccc', color: 'white', border: 'none', borderRadius: '25px', cursor: 'pointer' }}
-      >
-        Next: Vibe Check
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+          <button
+            onClick={handleSkip}
+            style={{ padding: '10px 30px', background: '#ccc', color: '#333', border: 'none', borderRadius: '25px', cursor: 'pointer' }}
+          >
+            Skip
+          </button>
+          <button
+            onClick={() => setStep(3)}
+            disabled={!formData.alias}
+            style={{ padding: '10px 30px', background: formData.alias ? '#FF6347' : '#ccc', color: 'white', border: 'none', borderRadius: '25px', cursor: 'pointer' }}
+          >
+            Next
+          </button>
+      </div>
     </div>
   );
 
@@ -169,17 +206,25 @@ const Onboarding = ({ onComplete }) => {
         ))}
       </div>
 
-      <button
-        onClick={() => setStep(4)}
-        disabled={formData.sweetPeaches.length !== 3 || formData.bruisedPeaches.length !== 3}
-        style={{
-          padding: '10px 30px',
-          background: (formData.sweetPeaches.length === 3 && formData.bruisedPeaches.length === 3) ? '#FF6347' : '#ccc',
-          color: 'white', border: 'none', borderRadius: '25px', cursor: 'pointer'
-        }}
-      >
-        Next: How it Works
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+          <button
+            onClick={handleSkip}
+            style={{ padding: '10px 30px', background: '#ccc', color: '#333', border: 'none', borderRadius: '25px', cursor: 'pointer' }}
+          >
+            Skip
+          </button>
+          <button
+            onClick={() => setStep(4)}
+            disabled={formData.sweetPeaches.length !== 3 || formData.bruisedPeaches.length !== 3}
+            style={{
+              padding: '10px 30px',
+              background: (formData.sweetPeaches.length === 3 && formData.bruisedPeaches.length === 3) ? '#FF6347' : '#ccc',
+              color: 'white', border: 'none', borderRadius: '25px', cursor: 'pointer'
+            }}
+          >
+            Next
+          </button>
+      </div>
     </div>
   );
 
@@ -211,6 +256,7 @@ const Onboarding = ({ onComplete }) => {
       borderRadius: '15px',
       backgroundColor: 'white'
     }}>
+      <ProgressBar />
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
