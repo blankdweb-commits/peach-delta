@@ -1,8 +1,23 @@
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   width: 100%;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  /* No padding-bottom needed if using flex, nav is separate element */
+}
+
+/* Bottom Nav - Flex approach */
+.bottom-nav {
+  flex: 0 0 auto;
   background-color: white;
   display: flex;
   justify-content: space-around;
@@ -33,12 +48,4 @@
 .nav-icon {
   font-size: 1.5rem;
   margin-bottom: 2px;
-}
-
-/* Adjust app container to not hide behind nav */
-.app-content {
-  height: 100vh;
-  overflow: auto;
-  padding-bottom: 70px; /* Nav height */
-  box-sizing: border-box;
 }

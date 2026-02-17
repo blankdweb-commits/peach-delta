@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { MOCK_USERS } from '../data/mockData';
 import { mockBackend } from '../services/mockBackend';
+// import { supabase } from '../supabaseClient'; // ready for integration
 
 export const UserContext = createContext();
 
@@ -41,6 +42,7 @@ export const UserProvider = ({ children }) => {
   });
 
   // Auth Functions
+  // TODO: Replace with supabase.auth.signInWithPassword
   const loginUser = (email, password) => {
     // Mock Logic
     if (email.includes('@') && password.length > 3) {
@@ -56,6 +58,7 @@ export const UserProvider = ({ children }) => {
     return false;
   };
 
+  // TODO: Replace with supabase.auth.signUp
   const signupUser = (email, password) => {
       // Mock Logic
       if (email.includes('@')) {
@@ -91,6 +94,7 @@ export const UserProvider = ({ children }) => {
     return subscription.dailyUnripes < 25;
   };
 
+  // TODO: Replace with insert into public.matches
   const ripenMatch = async (matchId) => {
     if (rippedMatches.includes(matchId)) return true;
 
@@ -111,6 +115,7 @@ export const UserProvider = ({ children }) => {
   const isRipped = (matchId) => rippedMatches.includes(matchId);
 
   // Chat Actions
+  // TODO: Replace with insert into public.messages
   const sendMessage = (matchId, text) => {
     const newMessage = { id: Date.now(), text, sender: 'me', timestamp: new Date().toISOString() };
     setChats(prev => ({
@@ -169,6 +174,7 @@ export const UserProvider = ({ children }) => {
 
   const incrementAdsSeen = () => setAdsSeen(prev => prev + 1);
 
+  // TODO: Replace with update public.profiles
   const updateUserProfile = (updates) => {
     setUserProfile(prev => {
       if (updates.preferences) {
@@ -186,6 +192,7 @@ export const UserProvider = ({ children }) => {
     return false;
   };
 
+  // TODO: Replace with insert into public.ads
   const postAd = async (adData, paymentRef) => {
     const result = await mockBackend.verifyPayment(paymentRef);
     if (result.status) {

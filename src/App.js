@@ -33,7 +33,7 @@ function AppContent() {
   // Auth Flow
   if (!currentUser) {
       return (
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '20px', height: '100vh', overflowY: 'auto' }}>
             {authView === 'login'
                 ? <Login onLoginSuccess={() => setCurrentView('discover')} onSwitchToSignup={() => setAuthView('signup')} />
                 : <Signup onSignupSuccess={() => setCurrentView('discover')} onSwitchToLogin={() => setAuthView('login')} />
