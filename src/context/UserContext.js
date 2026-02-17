@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useMemo, useCallback } from 'react';
 import { MOCK_USERS } from '../data/mockData';
 
 export const UserContext = createContext();
@@ -11,7 +11,7 @@ export const UserProvider = ({ children }) => {
   const [rippedMatches, setRippedMatches] = useState([]);
 
   // Current user's preferences (mocked for matching logic)
-  const [userProfile, setUserProfile] = useState({
+  const [userProfile] = useState({
     alias: "My_Alias",
     level: "Year 2",
     basics: {
@@ -34,19 +34,19 @@ export const UserProvider = ({ children }) => {
     special: "Communication is key to everything."
   });
 
-  const addPits = (amount) => {
+  const addPits = useCallback((amount) => {
     setPits(prev => prev + amount);
-  };
+  }, []);
 
-  const deductPits = (amount) => {
+  const deductPits = useCallback((amount) => {
     if (pits >= amount) {
       setPits(prev => prev - amount);
       return true;
     }
     return false;
-  };
+  }, [pits]);
 
-  const ripenMatch = (matchId) => {
+  const ripenMatch = useCallback((matchId) => {
     if (rippedMatches.includes(matchId)) return true;
 
     if (deductPits(5)) {
@@ -54,19 +54,21 @@ export const UserProvider = ({ children }) => {
       return true;
     }
     return false;
-  };
+  }, [rippedMatches, deductPits]);
 
-  const isRipped = (matchId) => rippedMatches.includes(matchId);
+  const isRipped = useCallback((matchId) => rippedMatches.includes(matchId), [rippedMatches]);
+
+  const value = useMemo(() => ({
+    pits,
+    addPits,
+    ripenMatch,
+    isRipped,
+    userProfile,
+    potentialMatches: MOCK_USERS
+  }), [pits, addPits, ripenMatch, isRipped, userProfile]);
 
   return (
-    <UserContext.Provider value={{
-      pits,
-      addPits,
-      ripenMatch,
-      isRipped,
-      userProfile,
-      potentialMatches: MOCK_USERS
-    }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );
