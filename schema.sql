@@ -63,3 +63,20 @@ CREATE POLICY "Users can view their own ripens." ON ripens
 
 CREATE POLICY "Users can insert their own ripens." ON ripens
   FOR INSERT WITH CHECK (auth.uid() = ripened_by);
+
+-- Create messages table
+CREATE TABLE messages (
+  id BIGSERIAL PRIMARY KEY,
+  sender_id UUID REFERENCES profiles(id),
+  receiver_id UUID REFERENCES profiles(id),
+  content TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own messages." ON messages
+  FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+CREATE POLICY "Users can send messages." ON messages
+  FOR INSERT WITH CHECK (auth.uid() = sender_id);

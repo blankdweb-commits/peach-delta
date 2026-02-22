@@ -160,6 +160,7 @@ export const UserProvider = ({ children }) => {
       userProfile,
       updateMembership,
       dailyRipens,
+      rippedMatches,
       loading,
       potentialMatches: MOCK_USERS,
       likes: [MOCK_USERS[1], MOCK_USERS[3]] // Mocked likes for demonstration
