@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
+import AdBanner from './AdBanner';
 
-const Discover = ({ onNavigateToStore }) => {
-  const { userProfile, potentialMatches, pits, ripenMatch, isRipped } = useUser();
+const Discover = ({ onNavigateToStore, onNavigateToMembership, onNavigateToLikes }) => {
+  const { userProfile, potentialMatches, pits, ripenMatch, isRipped, loading } = useUser();
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [notification, setNotification] = useState(null);
 
@@ -38,7 +39,7 @@ const Discover = ({ onNavigateToStore }) => {
 
   useEffect(() => {
     if (currentMatch) {
-      const { score, commonFun, commonValues, commonMedia } = calculateCompatibility(userProfile, currentMatch);
+      const { score, commonFun, commonValues } = calculateCompatibility(userProfile, currentMatch);
 
       if (isRipped(currentMatch.id)) {
         setNotification(null);
@@ -87,7 +88,8 @@ const Discover = ({ onNavigateToStore }) => {
     }
   };
 
-  if (!currentMatch) return <div>No more matches nearby!</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Peaches... 🍑</div>;
+  if (!currentMatch) return <div style={{ padding: '40px', textAlign: 'center' }}>No more matches nearby!</div>;
 
   const { score } = calculateCompatibility(userProfile, currentMatch);
   const isMatchRipped = isRipped(currentMatch.id);
@@ -100,10 +102,34 @@ const Discover = ({ onNavigateToStore }) => {
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '600px', margin: '0 auto', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Discover Peaches 🍑</h2>
-        <div style={{ fontWeight: 'bold', color: '#FF6347' }}>{pits} Pits</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          {userProfile.membershipType !== 'premium' && (
+            <button
+              onClick={onNavigateToMembership}
+              style={{ padding: '5px 12px', borderRadius: '15px', border: '1px solid #FF6347', color: '#FF6347', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}
+            >
+              Go Premium
+            </button>
+          )}
+          <div style={{ fontWeight: 'bold', color: '#FF6347' }}>{pits} Pits</div>
+        </div>
       </header>
+
+      {userProfile.membershipType === 'premium' && (
+        <div style={{ backgroundColor: '#f0f7ff', padding: '10px 15px', borderRadius: '10px', marginBottom: '20px', fontSize: '0.9rem', color: '#0056b3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>✨ See who likes you (Premium Feature)</span>
+          <button
+            onClick={onNavigateToLikes}
+            style={{ background: '#0056b3', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            View
+          </button>
+        </div>
+      )}
+
+      <AdBanner />
 
       {notification && (
         <div style={{
